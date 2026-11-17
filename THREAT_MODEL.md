@@ -200,6 +200,89 @@ Trust boundaries:
   but the off-chain sealing and replay work grows with the batch. No rate
   limiting exists because there is no public intake.
 
+### 4.10 Forged batch signature (attacker without the sequencer key)
+
+- **Attack:** anyone — a stranger, a compromised dependency, a second
+  operator — submits a batch with a fake ML-DSA-87 signature, hoping the
+  contract accepts it and records an attacker-chosen state root.
+- **Mitigations in place:** `submitBatch` verifies the signature on-chain
+  via the `pqcVerify` precompile (0x0A01) against the sequencer's
+  REGISTERED public key, fetched live from the `pqcKeyStatus` precompile
+  (0x0A02) — never a caller-supplied key, so an attacker cannot substitute
+  their own keypair. The signed digest binds the batch id, the state root,
+  the tx commitment, the encrypted-data hash, the chain id and the
+  contract address, so a signature for any other batch (or chain, or
+  contract) does not verify for this one. Only the sequencer address may
+  call `submitBatch` at all, so a stranger's transaction fails even
+  before the signature check.
+- **Evidence (on-chain, not just in tests):** on 17 Nov 2026 a batch was
+  submitted from the sequencer's own account carrying a genuine ML-DSA-87
+  signature over a DIFFERENT digest (batch id 999) — the strongest form
+  of this attack short of stealing the key, since the sender and the
+  signature were both legitimate and only the message was wrong. The
+  transaction was included on Diana and REVERTED (`InvalidBatchSignature`,
+  EVM tx `0xd512dc8aa512be382fab98cc84d45809121a58a440dafee3b7a90eadd3a93a8b`,
+  block 10249558); `batchCount` did not move and no batch was recorded.
+  Reproduce with `npm run forged-batch`. The same rejection is also
+  covered in the Hardhat tests (invalid / never-allowed / wrong-pubkey /
+  wrong-digest signatures).
+- **Residual risk:** the defence rests on the precompiles answering
+  correctly and on ML-DSA-87 itself. A break in either would void every
+  signature check at once — that is the shared assumption of the whole
+  QoreChain post-quantum design, not something this project can mitigate
+  alone. (See §3.)
+
+### 4.11 Withheld batch data (data-availability failure)
+
+- **Attack:** the sequencer settles a batch on-chain but withholds the
+  batch contents — the transactions, the plaintext payload, or the
+  ciphertext — so nobody can recompute the state transition or check
+  what the state root actually commits to. A settled root nobody can
+  audit is a blank cheque for the sequencer.
+- **Mitigations in place:** the settlement transaction commits on-chain
+  to the tx-data commitment AND to the encrypted-data hash
+  (`keccak256(kemCiphertext || sealedBlob)`), so the sequencer cannot
+  later present different data for a settled batch without the hashes
+  mismatching. The batch files (`deployments/batches/batch-<id>.json`)
+  publish the full plaintext transactions, the ciphertext and the sealed
+  blob, and the watchtower verifies the published data against the
+  on-chain commitments on every run — a missing batch file is a FAIL
+  that stops the chained verification, and a file whose data does not
+  reproduce the on-chain hashes fails loudly.
+- **Residual risk (demo-grade):** the publication channel is a Git repo
+  on the operator's machine — there is no DA layer, no DA committee, no
+  on-chain calldata or blobs, and no deadline by which data must appear.
+  If the operator settles a batch and never publishes its file, the
+  watchtower reports the batch as unverifiable, but nothing forces
+  publication and nothing rolls the batch back. The watchtower can only
+  sound the alarm; it cannot produce data it was never given. A
+  production rollup would need a real DA layer (see §5).
+
+### 4.12 Dead watchtower (verification liveness)
+
+- **Attack / failure:** the watchtower stops running — the operator
+  forgets it, the machine dies, the script crashes on a malformed file —
+  and batches keep settling with nobody checking them. A silent
+  watchtower is worse than a loud one: an attacker who can also silence
+  the alarm can settle a false batch unnoticed.
+- **Mitigations in place:** settlement does not depend on the watchtower
+  at all (it is read-only and advisory), so a dead watchtower never halts
+  the rollup — but equally, a dead watchtower never blocks a bad batch.
+  What exists: every run appends to the verification log
+  (`deployments/watchtower-log.json`), so a gap in the log's timestamps
+  is itself evidence the watchtower has not run; anyone with the repo and
+  a Diana RPC endpoint can run `npm run watchtower` themselves — the
+  checks need no secrets except the optional decrypt check (which skips
+  cleanly without the KEM key); and the batch files plus the on-chain
+  record are sufficient input for an independent re-implementation of
+  the checks.
+- **Residual risk (demo-grade):** there is no alerting, no schedule, no
+  second watchtower instance, and no on-chain heartbeat — if the operator
+  stops running it, nothing complains. The verification log records runs
+  that happened; it cannot record runs that did not. A production
+  deployment would run multiple independent watchtowers with alerting
+  and an on-chain fraud-proof path so a detection has consequences.
+
 ## 5. DEMO-GRADE vs PRODUCTION-GRADE
 
 This is a Developer Fest demo on a testnet. The following are explicit,

@@ -1,0 +1,62 @@
+{
+  "network": "qorechain-diana",
+  "note": "One entry per watchtower run. Runs before this log existed (17 Nov 2026) are documented in the README's live-usage section instead.",
+  "runs": [
+    {
+      "at": "2026-11-17T10:19:44.724Z",
+      "contract": "0x96051b69a7d0e2236a3fe2e51fe33a55367d36c2",
+      "chainId": 9800,
+      "batchCount": 3,
+      "decryptCheck": "enabled",
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": false,
+          "failures": [
+            "batch file stateRoot differs from the on-chain record",
+            "replayed state root does not match the batch file's stateRoot",
+            "decrypted payload newStateRoot does not match the batch file"
+          ]
+        },
+        {
+          "batchId": 2,
+          "ok": false,
+          "failures": [
+            "prevStateRoot does not match the previous batch's state root"
+          ]
+        }
+      ],
+      "allOk": false
+    },
+    {
+      "at": "2026-11-17T10:19:49.170Z",
+      "contract": "0x96051b69a7d0e2236a3fe2e51fe33a55367d36c2",
+      "chainId": 9800,
+      "batchCount": 3,
+      "decryptCheck": "enabled",
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    }
+  ]
+}

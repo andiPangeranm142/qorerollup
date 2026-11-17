@@ -18,6 +18,11 @@
  * Prints one OK/FAIL line per batch naming which check failed, and exits 0
  * only if every batch passes. Read-only: it never sends a transaction.
  *
+ * Every run is appended to deployments/watchtower-log.json (the
+ * verification log): timestamp, contract, batch count, per-batch results
+ * and the overall outcome — so the verification history is auditable
+ * rather than a one-off claim.
+ *
  * Honest limits (see THREAT_MODEL.md): the watchtower is ADVISORY — it
  * cannot halt settlement or slash anyone — and it shares the rollup.ts
  * encoding library with the sequencer, so a bug in the shared library would
@@ -46,6 +51,8 @@ const SEQUENCER_COSMOS = "qor1q9q2q4hwxl2jgzcrjlkd7y68m2qwxwul0nheda";
 const ROOT = process.cwd();
 const DEPLOYMENTS = path.resolve(ROOT, "deployments");
 const BATCHES_DIR = path.resolve(DEPLOYMENTS, "batches");
+/** The verification log: one entry per watchtower run. */
+const WATCHTOWER_LOG_PATH = path.resolve(DEPLOYMENTS, "watchtower-log.json");
 /** OUTSIDE the repo (mode 600). Absent => decrypt check is skipped. */
 const KEM_SECRET_PATH = path.resolve(ROOT, "..", "kem-key.json");
 
@@ -157,6 +164,7 @@ async function main(): Promise<void> {
   let prevBalances = new Map<Address, bigint>();
   let prevNonces = new Map<Address, number>();
   let allOk = true;
+  const results: Array<{ batchId: number; ok: boolean; failures: string[] }> = [];
 
   for (let batchId = 0; batchId < batchCount; batchId++) {
     const batchPath = path.resolve(BATCHES_DIR, `batch-${batchId}.json`);
@@ -186,6 +194,7 @@ async function main(): Promise<void> {
     if (!fs.existsSync(batchPath)) {
       console.log(`batch ${batchId}: FAIL — batch file missing (${batchPath})`);
       allOk = false;
+      results.push({ batchId, ok: false, failures: [`batch file missing (${batchPath})`] });
       // Cannot chain past a missing file: the next batch's pre-state is unknown.
       break;
     }
@@ -240,6 +249,7 @@ async function main(): Promise<void> {
       allOk = false;
       console.log(`batch ${batchId}: FAIL — ${failures.join("; ")}`);
     }
+    results.push({ batchId, ok: failures.length === 0, failures });
 
     // Advance the chained pre-state from this file's post-state; if the file
     // predates the balances field, replay the transition instead.
@@ -266,6 +276,33 @@ async function main(): Promise<void> {
 
   console.log(allOk ? "\nWatchtower: ALL BATCHES OK" : "\nWatchtower: FAILURES FOUND (see above)");
   process.exitCode = allOk ? 0 : 1;
+
+  // Append this run to the verification log (audit trail, not a claim).
+  const logEntry = {
+    at: new Date().toISOString(),
+    contract,
+    chainId,
+    batchCount,
+    decryptCheck: kemSecretKey ? "enabled" : "skipped (no KEM key)",
+    results,
+    allOk,
+  };
+  const existingLog = fs.existsSync(WATCHTOWER_LOG_PATH)
+    ? (readJson<{ runs?: unknown[] }>(WATCHTOWER_LOG_PATH).runs ?? [])
+    : [];
+  fs.writeFileSync(
+    WATCHTOWER_LOG_PATH,
+    JSON.stringify(
+      {
+        network: "qorechain-diana",
+        note: "One entry per watchtower run. Runs before this log existed (17 Nov 2026) are documented in the README's live-usage section instead.",
+        runs: [...existingLog, logEntry],
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+  console.log(`Verification log updated: deployments/watchtower-log.json (${existingLog.length + 1} runs)`);
 }
 
 main().catch((err: unknown) => {

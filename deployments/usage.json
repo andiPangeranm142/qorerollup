@@ -71,6 +71,23 @@
       "tx": "0x6ccceb8ce8179ea0a7254342f5e9cb5ddcdbe3c50e688193cb8e07d687a3460f",
       "cosmosTx": "BD8A53E541CA916F017A801251465C6604CFC231C30A2A472781C1A797DEBF1F",
       "block": 10249398
+    },
+    {
+      "at": "2026-11-17T10:19:05.472Z",
+      "command": "forged-batch",
+      "expected": "revert",
+      "note": "Forged ML-DSA-87 signature (genuine signature over a different digest) submitted by the sequencer itself. The contract must reject it: InvalidBatchSignature.",
+      "batchId": 3,
+      "stateRoot": "0x5bc6804ce27bdc9f0d7303973b8b390d9f0a8d0af6886fd2d50eb3274d98230c",
+      "txDataCommitment": "0x57eabe0cbc89abc96b1979581ef037263fb815b235f11af5b3cbae350ed1f797",
+      "encryptedDataHash": "0xaf7499418d7c5df046fcc5ae647ad894fedbb5ee3002b11e052dcad5f9fdd8bb",
+      "forgedDigest": "0xe468dbf1b59b6c08cee9b3a49936690c4bec496fb544b62a4882d043e364facd",
+      "tx": "0xd512dc8aa512be382fab98cc84d45809121a58a440dafee3b7a90eadd3a93a8b",
+      "cosmosTx": "CFDACCA34CAFA7FA02853841D191070E8E24450412549F8F8473F7DCB9E617D0",
+      "block": 10249558,
+      "receiptStatus": "reverted",
+      "batchCountBefore": 3,
+      "batchCountAfter": 3
     }
   ]
 }

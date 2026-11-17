@@ -46,7 +46,13 @@ settles them on the QoreChain Diana testnet with post-quantum security:
   re-verified by the watchtower.
 - [x] Watchtower — `npm run watchtower` verifies all 3 batches OK
   (signature, state replay, receipt, decrypt check, genesis-funding
-  cross-check). Tampered batches are detected (see tests).
+  cross-check). Tampered batches are detected (see tests) — and
+  demonstrated live: flipping one hex char in a batch file's claimed
+  state root made the watchtower FAIL that batch on three independent
+  checks (file vs on-chain root, replayed root, decrypted payload) and
+  FAIL the next batch on the broken chain; restoring the file returned
+  ALL BATCHES OK. Every run is appended to the verification log
+  ([deployments/watchtower-log.json](deployments/watchtower-log.json)).
 - [x] ML-KEM data protection — batch payloads sealed with ML-KEM-1024
   + AES-256-GCM; public key in
   [deployments/kem-public-key.json](deployments/kem-public-key.json),
@@ -79,6 +85,7 @@ Per-batch detail (txs, state roots, signatures, ciphertexts):
 | Batch #1 | 2 txs: deployer → `0x2222…2222` 25,000; `0x1111…1111` → `0x2222…2222` 10,000 uqor | `0x6b22abf3260b0b7c0e6467da30bf1decdb0d67627c57512e721bad18cb3ddf56` | 10249387 |
 | Batch #2 | 1 tx: deployer → `0x3333…3333`, 15,000 uqor | `0x4a0958c3ad17f1c07d899292893758fb3af2f70d8f92b063315efdc4d6040f3b` | 10249393 |
 | Withdraw | 0.1 QOR back to the deployer | `0x6ccceb8ce8179ea0a7254342f5e9cb5ddcdbe3c50e688193cb8e07d687a3460f` | 10249398 |
+| **Forged batch (attack demo)** | Genuine ML-DSA-87 signature over the WRONG digest, submitted by the sequencer itself — **REVERTED on-chain** (`InvalidBatchSignature`), `batchCount` unchanged | `0xd512dc8aa512be382fab98cc84d45809121a58a440dafee3b7a90eadd3a93a8b` | 10249558 |
 
 Final on-chain state (verified by independent read): `batchCount` 3,
 `totalDeposited` 0.3 QOR, `totalWithdrawn` 0.1 QOR, deployer deposit
@@ -140,6 +147,8 @@ npm run sequencer enqueue --from <0x> --to <0x> --amount <uqor>
 npm run sequencer settle    # settle the mempool as one ML-DSA-signed batch
 npm run usage withdraw --amount 100000       # withdraw 0.1 QOR
 npm run watchtower          # re-verify every settled batch
+npm run forged-batch        # attack demo: submit a batch with a forged
+                            # ML-DSA-87 signature — must REVERT on-chain
 npm run sequencer status    # contract + local state, read-only
 ```
 
