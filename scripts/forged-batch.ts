@@ -77,10 +77,10 @@ function appendUsageStep(contract: Address, step: Record<string, unknown>): void
     : [];
   steps.push({ at: new Date().toISOString(), ...step });
   writeJson(USAGE_PATH, {
+    ...(existing ?? {}),
     network: "qorechain-diana",
     chainId: TESTNET_CHAIN_ID,
     contract,
-    ...(existing ?? {}),
     steps,
   });
 }

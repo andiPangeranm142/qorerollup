@@ -34,6 +34,8 @@
   "private": true,
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.app.json && vite build",
+    "prebuild": "node scripts/gen-evidence.mjs",
+    "render-check": "node scripts/render-check.mjs",
     "compile": "hardhat compile",
     "deploy": "tsx --env-file=../.env scripts/deploy.ts",
     "dev": "vite",
@@ -42,6 +44,7 @@
     "test": "hardhat test",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.app.json",
     "usage": "tsx --env-file=../.env scripts/usage.ts",
+    "merkle-withdraw": "tsx --env-file=../.env.user scripts/merkle-withdraw.ts",
     "watchtower": "tsx --env-file=../.env scripts/watchtower.ts",
     "window": "tsx --env-file=../.env scripts/window.ts",
     "forged-batch": "tsx --env-file=../.env scripts/forged-batch.ts"

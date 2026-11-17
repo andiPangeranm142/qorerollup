@@ -24,6 +24,7 @@ import {
   type OnChainBatch,
   type RollupTx,
 } from "../src/lib/rollup";
+import { merkleLeafToJson } from "../src/lib/merkle";
 import { generateKemKeypair, sealBatchPayload } from "../src/lib/kem";
 
 const ALICE = "0x1111111111111111111111111111111111111111" as Address;
@@ -47,7 +48,7 @@ function makeValidFixture(): Fixture {
   const prevBalances = new Map<Address, bigint>([[ALICE, 1000n]]);
   const prevNonces = new Map<Address, number>();
   const txs: RollupTx[] = [{ from: ALICE, to: BOB, amount: 100n, nonce: 0 }];
-  const { newStateRoot, newBalances, newNonces } = applyTxs(
+  const { newStateRoot, newBalances, newNonces, leaves, proofs } = applyTxs(
     GENESIS_STATE_ROOT,
     prevBalances,
     txs,
@@ -84,6 +85,8 @@ function makeValidFixture(): Fixture {
       [...newBalances.entries()].map(([addr, bal]) => [addr, bal.toString()]),
     ),
     nonces: Object.fromEntries(newNonces.entries()),
+    leaves: leaves.map(merkleLeafToJson),
+    proofs,
   };
   const onChain: OnChainBatch = {
     stateRoot: newStateRoot,
@@ -240,5 +243,55 @@ describe("verifyBatch", () => {
     });
     expect(result.ok).to.equal(false);
     expect(result.failures.join(" ")).to.match(/replay|insufficient/);
+  });
+
+  it("flags a tampered leaf balance in the batch file", () => {
+    const f = makeValidFixture();
+    // Inflate BOB's leaf balance without touching the leaf hash: the leaf
+    // hash no longer matches its (account, balance, nonce).
+    const bobLeaf = f.batch.leaves.find(
+      (l) => l.account.toLowerCase() === BOB.toLowerCase(),
+    ) as { balance: string };
+    bobLeaf.balance = "999999";
+    const result = verify(f);
+    expect(result.ok).to.equal(false);
+    expect(result.failures.join(" ")).to.match(/leaf/);
+  });
+
+  it("flags a tampered leaf hash in the batch file", () => {
+    const f = makeValidFixture();
+    f.batch.leaves[0] = {
+      ...f.batch.leaves[0],
+      leaf: keccak256("0xdeadbeef"),
+    } as (typeof f.batch.leaves)[number];
+    const result = verify(f);
+    expect(result.ok).to.equal(false);
+    expect(result.failures.join(" ")).to.match(/leaf|Merkle|stateRoot/);
+  });
+
+  it("flags a tampered Merkle proof in the batch file", () => {
+    const f = makeValidFixture();
+    const aliceProof = f.batch.proofs[ALICE.toLowerCase()] as Hex[];
+    aliceProof[0] = keccak256("0xdeadbeef");
+    const result = verify(f);
+    expect(result.ok).to.equal(false);
+    expect(result.failures.join(" ")).to.match(/proof/);
+  });
+
+  it("flags a missing Merkle proof in the batch file", () => {
+    const f = makeValidFixture();
+    delete f.batch.proofs[BOB.toLowerCase()];
+    const result = verify(f);
+    expect(result.ok).to.equal(false);
+    expect(result.failures.join(" ")).to.match(/proof/);
+  });
+
+  it("flags a batch file with no Merkle leaves at all (pre-v2 file)", () => {
+    const f = makeValidFixture();
+    delete (f.batch as Partial<BatchFile>).leaves;
+    delete (f.batch as Partial<BatchFile>).proofs;
+    const result = verify(f);
+    expect(result.ok).to.equal(false);
+    expect(result.failures.join(" ")).to.match(/Merkle leaves/);
   });
 });

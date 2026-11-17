@@ -11,10 +11,12 @@ An off-chain sequencer collects transactions into batches, seals each batch
 payload with ML-KEM-1024, signs the batch digest with ML-DSA-87, and settles
 it on the QoreRollup contract on the QoreChain Diana testnet. The contract
 verifies the ML-DSA-87 signature via the `pqcVerify` precompile against the
-sequencer's registered key and records the batch state root, the tx-data
-commitment, the encrypted-data hash, and a settlement receipt hash. Users
-deposit QOR into the contract and withdraw from it. A watchtower re-verifies
-every settled batch off-chain.
+sequencer's registered key and records the batch's Merkle state root (one
+leaf per non-zero balance), the tx-data commitment, the encrypted-data hash,
+and a settlement receipt hash. Users deposit QOR into the contract and
+withdraw by proving their leaf against a settled batch root — directly,
+with no sequencer help. A watchtower re-verifies every settled batch
+off-chain, including every leaf's Merkle proof.
 
 Trust boundaries:
 
@@ -32,7 +34,8 @@ Trust boundaries:
 | Asset | Where it lives | What loss means |
 |---|---|---|
 | Deposited QOR | QoreRollup contract (`deposits`, `totalDeposited`) | Direct loss of user funds if withdrawal logic is wrong |
-| Batch integrity (state roots, commitments) | On-chain batch records + off-chain batch files | A false state root becomes the "truth" for the rollup |
+| Withdrawal caps | QoreRollup contract (`withdrawnAmount` per account) | A wrong cap lets an account withdraw more than its largest proven leaf balance |
+| Batch integrity (state roots, commitments, leaves) | On-chain batch records + off-chain batch files | A false state root becomes the "truth" for the rollup — and its leaves become withdrawable |
 | Sequencer ML-DSA-87 key | Derived from the sequencer mnemonic (`../.env`, mode 600) | Whoever holds it can settle arbitrary batches |
 | Sequencer EVM key | `../.env` (mode 600) | Whoever holds it can submit batches and drain the sequencer's own deposits |
 | KEM secret key | `../kem-key.json` (mode 600, outside the repo) | Whoever holds it can decrypt sealed batch payloads |
@@ -45,6 +48,10 @@ Trust boundaries:
    signing key. There is no decentralisation, no leader rotation, and no
    forced-inclusion mechanism: if the sequencer censors a transaction, that
    transaction never settles. This is the largest single trust assumption.
+   What the sequencer CANNOT do is block a withdrawal: once a batch is
+   settled, any account withdraws by proving its leaf against the settled
+   root directly — the sequencer is not in the withdrawal path at all.
+   (But see §4.11: a user still needs the batch DATA to construct a proof.)
 2. **Chain-enforced EVM windows.** Every EVM transaction from the sequencer
    requires a registered ML-DSA-87 key and a live authorisation window. The
    sequencer never opens a window itself — the operator does, deliberately —
@@ -86,14 +93,28 @@ Trust boundaries:
   which binds the state root, the tx commitment, and the encrypted-data
   hash together — a settled root cannot later be swapped for another
   without a new signature. The watchtower replays every batch's state
-  transition from the previous batch's balances and flags any root that
-  does not follow from the transactions. Batch files publish the plaintext
-  transactions, so anyone can replay them.
+  transition from the previous batch's balances, recomputes the Merkle
+  root from the batch file's leaves, and verifies every leaf's proof —
+  flagging any root that does not follow from the transactions. Batch
+  files publish the plaintext transactions, the leaves and the proofs,
+  so anyone can replay them.
 - **Residual risk:** the watchtower is advisory only — it cannot halt
   settlement, revert a batch, or slash the sequencer. Detection is not
-  prevention. And the watchtower shares the `rollup.ts` encoding library
-  with the sequencer, so a bug in that library would be invisible to the
-  watchtower (both sides would compute the same wrong answer).
+  prevention. And the watchtower shares the `rollup.ts`/`merkle.ts`
+  encoding libraries with the sequencer, so a bug in those libraries
+  would be invisible to the watchtower (both sides would compute the
+  same wrong answer). Worse, in v2 a false root has a direct payout:
+  leaves under a false root are withdrawable, so a compromised
+  sequencer key can mint rollup balances and drain the contract's
+  deposits before anyone reacts. The only defences are the key hygiene
+  in §3.4, the window requirement in §3.2, and the watchtower alarm.
+- **What the sequencer cannot do:** block withdrawals. Withdrawal needs
+  no sequencer cooperation — the user calls `withdraw` with a proof
+  built from the published batch file. A sequencer that goes offline or
+  turns hostile after a batch settles cannot stop the users of that
+  batch from withdrawing. (It CAN stop settling new batches, freezing
+  later balances — see §3.1 — and it can withhold the batch data
+  needed to build a proof — see §4.11.)
 
 ### 4.3 Transaction replay / reordering / censorship
 
@@ -115,19 +136,48 @@ Trust boundaries:
 
 ### 4.4 Withdrawal abuse
 
-- **Attack:** withdraw more than deposited, or withdraw the same deposit
-  twice.
-- **Mitigations in place:** the contract tracks `deposits` per address and
-  `withdrawnIds`; `withdraw` checks the caller's deposit balance and marks
-  the withdrawal id used.
-- **Residual risk (demo-grade):** withdrawal checks the **L1 deposit
-  ledger only** — it does not verify a proof that the withdrawer holds
-  that balance in the rollup state. The rollup balance set and the L1
-  deposit ledger are two separate books that this demo never reconciles:
-  deposits are not auto-credited into rollup balances, and withdrawals do
-  not burn rollup balances. A user who received rollup funds off-chain
-  cannot withdraw them on the basis of the rollup state, and the contract
-  cannot tell whether a withdrawal corresponds to any rollup activity.
+- **Attack:** withdraw more than the rollup balance, withdraw the same
+  balance twice (against the same batch or across several batches), or
+  withdraw someone else's balance.
+- **Mitigations in place (v2):** `withdraw` requires `msg.sender ==
+  account` (only the account owner withdraws its own funds); it
+  verifies the caller's Merkle proof against the settled batch's state
+  root on-chain (sorted-pair rule, the same fold as
+  `src/lib/merkle.ts`); and it pays `balance -
+  withdrawnAmount[account]`, then sets `withdrawnAmount[account] =
+  balance`. The cumulative cap means the total ever withdrawn by an
+  account can never exceed the largest leaf balance it has ever
+  proven: the same leaf twice pays zero the second time, and a later
+  batch with a higher balance pays only the difference. A lower
+  balance later pays nothing. The cap is updated before the external
+  call (checks-effects-interactions), so reentrancy cannot
+  double-spend. The nonce is part of the leaf, so a leaf proves
+  (balance, nonce) together.
+- **Evidence (on-chain, not just in tests):** on 17 Nov 2026 an
+  independent user wallet withdrew 50,000 uqor (0.05 QOR) against
+  batch #2 with a 3-element Merkle proof (EVM tx
+  `0xaa57f3b235d317dc8d2caf2f2444ff0b27822145042490484dbda2bc8c33fc14`,
+  block 10250197). The identical call sent again was included and
+  REVERTED (`ZeroWithdraw`, EVM tx
+  `0x1da16ddeeea2b9fa5f456911b36ed615b20b7b551491f2a94b81a532b177a86d`,
+  block 10250203), and a call with one flipped hex char in the proof
+  was included and REVERTED (`InvalidMerkleProof`, EVM tx
+  `0x35715e361b5289e5d4259ea705a56f58c07f1d993323efce8eb946551a076519`,
+  block 10250208); `withdrawnAmount` stayed 50,000 uqor through both.
+  Reproduce with `npm run merkle-withdraw -- --batch 2 --expect-revert`
+  (and `--tamper-proof`). The same rejections are covered in the
+  Hardhat tests (wrong proof, wrong balance/nonce, wrong sender,
+  double withdrawal, lower later balance, unknown batch).
+- **Residual risk:** the withdrawal proof is only as honest as the
+  settled root: a false root (see §4.2) makes false leaves
+  withdrawable, and there is no challenge period. Withdrawals also do
+  NOT burn rollup balances and do NOT consult the L1 `deposits`
+  ledger — the contract pays out of its balance against the proven
+  rollup balance, so the rollup balance set and the L1 deposit ledger
+  are still two books that are never reconciled on-chain (the
+  watchtower cross-checks the seeded funding against cumulative
+  `totalDeposited` off-chain). A user whose leaf is in a batch whose
+  data was withheld cannot construct a proof at all (see §4.11).
 
 ### 4.5 KEM key compromise / batch data exposure
 
@@ -157,8 +207,8 @@ Trust boundaries:
   count disagrees with the on-chain `batchCount`, so a reset or rolled-back
   `state.json` fails loudly instead of settling a duplicate batch id. The
   watchtower replays the whole chain from genesis, so an edited batch file
-  fails against the on-chain record (commitment, state root, digest,
-  signature, receipt — any of them). A missing batch file is reported as a
+  fails against the on-chain record (commitment, state root, Merkle leaves
+  and proofs, digest, signature, receipt — any of them). A missing batch file is reported as a
   FAIL and stops the chained verification. Batch 0's pre-state — the
   operator-seeded genesis funding — is cross-checked against the chain:
   the watchtower fails the batch if the seeded funding exceeds the
@@ -221,8 +271,12 @@ Trust boundaries:
   of this attack short of stealing the key, since the sender and the
   signature were both legitimate and only the message was wrong. The
   transaction was included on Diana and REVERTED (`InvalidBatchSignature`,
-  EVM tx `0xd512dc8aa512be382fab98cc84d45809121a58a440dafee3b7a90eadd3a93a8b`,
-  block 10249558); `batchCount` did not move and no batch was recorded.
+  EVM tx `0x2fbb8444db842c419b180dc5b34b64b4b636b2c4b1199faedc025558f6d206f3`,
+  block 10250217); `batchCount` did not move and no batch was recorded.
+  (The same demo was run against the superseded v1 contract earlier the
+  same day: EVM tx
+  `0xd512dc8aa512be382fab98cc84d45809121a58a440dafee3b7a90eadd3a93a8b`,
+  block 10249558 — see `deployments/v1/`.)
   Reproduce with `npm run forged-batch`. The same rejection is also
   covered in the Hardhat tests (invalid / never-allowed / wrong-pubkey /
   wrong-digest signatures).
@@ -238,17 +292,28 @@ Trust boundaries:
   batch contents — the transactions, the plaintext payload, or the
   ciphertext — so nobody can recompute the state transition or check
   what the state root actually commits to. A settled root nobody can
-  audit is a blank cheque for the sequencer.
+  audit is a blank cheque for the sequencer. In v2 this has a second,
+  sharper edge: **a user whose balance is in a withheld batch cannot
+  construct the Merkle proof needed to withdraw**. The sequencer cannot
+  block a withdrawal directly (see §4.2), but withholding ALL batch
+  data achieves the same result indirectly — the funds are locked in
+  the contract with no way to prove ownership of them. Stated plainly:
+  v2's "no sequencer help" withdrawal assumes the batch data is
+  public.
 - **Mitigations in place:** the settlement transaction commits on-chain
   to the tx-data commitment AND to the encrypted-data hash
   (`keccak256(kemCiphertext || sealedBlob)`), so the sequencer cannot
   later present different data for a settled batch without the hashes
   mismatching. The batch files (`deployments/batches/batch-<id>.json`)
-  publish the full plaintext transactions, the ciphertext and the sealed
-  blob, and the watchtower verifies the published data against the
-  on-chain commitments on every run — a missing batch file is a FAIL
-  that stops the chained verification, and a file whose data does not
-  reproduce the on-chain hashes fails loudly.
+  publish the full plaintext transactions, the Merkle leaves and
+  proofs, the ciphertext and the sealed blob, and the watchtower
+  verifies the published data against the on-chain commitments on
+  every run — a missing batch file is a FAIL that stops the chained
+  verification, and a file whose data does not reproduce the on-chain
+  hashes fails loudly. The batch files live in this PUBLIC repo, so
+  anyone who has ever fetched them holds a copy of the data a
+  withdrawal needs — the sequencer cannot retroactively un-publish
+  them.
 - **Residual risk (demo-grade):** the publication channel is a Git repo
   on the operator's machine — there is no DA layer, no DA committee, no
   on-chain calldata or blobs, and no deadline by which data must appear.
@@ -290,11 +355,11 @@ deliberate gaps — not oversights:
 
 | Area | Demo-grade (this project) | Production-grade would need |
 |---|---|---|
-| Fraud / validity proofs | None. No fraud proofs, no validity (ZK) proofs, no challenge period. A settled batch is final the moment it is mined. | A challenge window with fraud proofs, or validity proofs verified on-chain. |
-| State commitments | Hash commitment over the sorted balance set — NOT a Merkle root. No inclusion proofs exist; verifying one balance requires the whole set. | A Merkle/Verkle tree with per-account inclusion proofs. |
-| Withdrawals | Check the L1 deposit ledger only; no rollup-balance proof. Rollup balances and L1 deposits are never reconciled. | Withdrawals proven against the rollup state root (Merkle proof + nullifier). |
-| Sequencer | Single, centralised, operator-run. No forced inclusion, no rotation, no liveness guarantee. | Decentralised sequencer set or based sequencing, forced inclusion, escape hatch. |
-| Watchtower | Advisory only — prints FAIL lines, cannot halt settlement or slash. Shares `rollup.ts` with the sequencer, so a shared-library bug is invisible to it. | Independent implementation, on-chain fraud-proof submission, bonded challengers. |
+| Fraud / validity proofs | None. No fraud proofs, no validity (ZK) proofs, no challenge period. A settled batch is final the moment it is mined — and in v2 its leaves are immediately withdrawable. | A challenge window with fraud proofs, or validity proofs verified on-chain. |
+| State commitments | **Done in v2:** Merkle root over (account, balance, nonce) leaves, sorted pairs; every batch file stores the leaves and proofs. | A Verkle tree or a state trie with storage proofs for richer state. |
+| Withdrawals | **Done in v2:** proven against the rollup state root (Merkle proof + cumulative per-account cap), no sequencer help. Still demo-grade: no challenge period, so a false root's leaves are withdrawable; withdrawals do not burn rollup balances or reconcile with the L1 deposit ledger. | A challenge period before withdrawals finalise, on-chain reconciliation of rollup balances with L1 deposits, and a real DA layer so proofs can always be constructed. |
+| Sequencer | Single, centralised, operator-run. No forced inclusion, no rotation, no liveness guarantee. Cannot block withdrawals from settled batches, but can halt new batches and (via §4.11) strand funds by withholding batch data. | Decentralised sequencer set or based sequencing, forced inclusion, escape hatch. |
+| Watchtower | Advisory only — prints FAIL lines, cannot halt settlement or slash. Shares `rollup.ts`/`merkle.ts` with the sequencer, so a shared-library bug is invisible to it. | Independent implementation, on-chain fraud-proof submission, bonded challengers. |
 | Batch data | Plaintext published in `deployments/batches/` for verification; the on-chain commitment is to the ciphertext. Transparency chosen over confidentiality. | Real data-availability layer (DA committee, DA chain, or on-chain calldata/blobs) with the plaintext genuinely restricted. |
 | KEM keys | Single key held by the operator; no rotation, no threshold, no forward secrecy. | Rotating keys, threshold decryption, per-batch keys. |
 | User signatures | Rollup transactions are NOT signed by their senders; the sequencer can invent txs from any funded account. | Every rollup tx signed by its sender (ideally PQ-signed). |
@@ -305,8 +370,10 @@ deliberate gaps — not oversights:
 
 The single highest-leverage improvement is a fraud-proof challenge period
 with an on-chain dispute path: it turns the watchtower from an alarm bell
-into an enforcement mechanism. The second is user-signed rollup
-transactions, which removes the sequencer's ability to invent transfers.
-The third is a Merkle state commitment with inclusion proofs, which makes
-withdrawals provable against the rollup state instead of the L1 ledger
-alone.
+into an enforcement mechanism — and in v2 it matters more than before,
+because a false root's leaves are immediately withdrawable. The second is
+user-signed rollup transactions, which removes the sequencer's ability to
+invent transfers. The third is a real data-availability layer, so a user
+can always construct a withdrawal proof even if the sequencer stops
+publishing batch files. (The Merkle state commitment with inclusion proofs
+— the third item in the v1 version of this section — is done in v2.)

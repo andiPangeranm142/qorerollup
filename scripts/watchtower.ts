@@ -10,6 +10,10 @@
  *      over the recomputed batch digest;
  *  (b) the state transition replays from the previous batch's balances and
  *      matches both the batch file and the on-chain getBatch record;
+ *  (b4) the Merkle state tree: the batch file's leaves recompute to the
+ *      file's stateRoot AND to the on-chain root, the leaves match the
+ *      replayed post-batch state exactly, and every leaf's proof verifies
+ *      against the root (so withdrawals against this batch can work);
  *  (c) the on-chain receiptHash matches the recomputed receipt;
  *  (d) when ../kem-key.json exists, the sealed blob decrypts to a payload
  *      matching the batch file; otherwise the decrypt check is SKIPPED and

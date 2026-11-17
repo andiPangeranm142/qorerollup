@@ -1,27 +1,29 @@
 /**
- * usage.ts - deposit QOR into the rollup and withdraw it back, on Diana.
+ * usage.ts - deposit QOR into the rollup, on Diana.
  *
  * Usage (see README):
  *   npm run usage deposit --amount <uqor>    deposit QOR into QoreRollup
- *   npm run usage withdraw --amount <uqor>   withdraw QOR back (fresh nullifier)
  *
- * Both commands need a live EVM authorisation window for the deployer
+ * The command needs a live EVM authorisation window for the deployer
  * (run `npm run window open` first). Each step is appended to
  * deployments/usage.json (same file the sequencer writes its settle steps
  * to), with the EVM hash, the Cosmos hash and the block number.
  *
+ * Withdrawals (v2): the v1 `withdraw` command (L1 deposit ledger +
+ * nullifier) no longer exists — the contract's withdraw is now a
+ * Merkle-proof withdrawal that any account calls for itself. Use
+ * `npm run merkle-withdraw -- --batch <id>` instead
+ * (scripts/merkle-withdraw.ts).
+ *
  * Safety: testnet ONLY (EVM chain id 9800). Secrets come from ../.env and
- * are never printed. The withdrawal id is keccak256("QoreRollup.withdraw-<n>")
- * where <n> counts prior withdrawals in usage.json, so every withdrawal
- * uses a fresh nullifier.
+ * are never printed.
  */
 import {
   createEvmClient,
   evmAccountFromPrivateKey,
-  readContract,
   writeContract,
 } from "@qorechain/evm";
-import { keccak256, stringToHex, type Address, type Hex } from "viem";
+import { type Address, type Hex } from "viem";
 import fs from "node:fs";
 import path from "node:path";
 import { cosmosHashForEvmTx } from "./cosmos-hash";
@@ -82,25 +84,19 @@ function appendUsageStep(contract: Address, step: Record<string, unknown>): void
     : [];
   steps.push({ at: new Date().toISOString(), ...step });
   writeJson(USAGE_PATH, {
+    ...(existing ?? {}),
     network: "qorechain-diana",
     chainId: TESTNET_CHAIN_ID,
     contract,
-    ...(existing ?? {}),
     steps,
   });
-}
-
-function countPriorWithdrawals(): number {
-  if (!fs.existsSync(USAGE_PATH)) return 0;
-  const existing = readJson<{ steps?: Array<{ command?: string }> }>(USAGE_PATH);
-  return (existing.steps ?? []).filter((s) => s.command === "withdraw").length;
 }
 
 function parseAmount(args: string[]): bigint {
   const i = args.indexOf("--amount");
   const raw = i >= 0 ? args[i + 1] : undefined;
   if (!raw || !/^\d+$/.test(raw)) {
-    throw new Error("Usage: npm run usage <deposit|withdraw> --amount <uqor>");
+    throw new Error("Usage: npm run usage deposit --amount <uqor>");
   }
   const amount = BigInt(raw);
   if (amount <= 0n) throw new Error("--amount must be positive");
@@ -109,8 +105,15 @@ function parseAmount(args: string[]): bigint {
 
 async function main(): Promise<void> {
   const [cmd, ...args] = process.argv.slice(2);
-  if (cmd !== "deposit" && cmd !== "withdraw") {
-    console.error("Usage: npm run usage <deposit|withdraw> --amount <uqor>");
+  if (cmd === "withdraw") {
+    throw new Error(
+      "The v1 `withdraw` command no longer exists: v2 withdrawals are " +
+        "Merkle-proof withdrawals that any account calls for itself. " +
+        "Use `npm run merkle-withdraw -- --batch <id>` instead.",
+    );
+  }
+  if (cmd !== "deposit") {
+    console.error("Usage: npm run usage deposit --amount <uqor>");
     process.exitCode = 1;
     return;
   }
@@ -159,46 +162,6 @@ async function main(): Promise<void> {
     console.log("Recorded in deployments/usage.json.");
     return;
   }
-
-  // withdraw — fresh nullifier per withdrawal.
-  const n = countPriorWithdrawals() + 1;
-  const withdrawalId = keccak256(stringToHex(`QoreRollup.withdraw-${n}`));
-  const deposited = (await readContract(client.publicClient, {
-    address: contract,
-    abi,
-    functionName: "deposits",
-    args: [account.address],
-  })) as bigint;
-  console.log(`\nDeposited balance: ${deposited} wei`);
-  if (deposited < amountWei) {
-    throw new Error(
-      `Insufficient deposit: ${deposited} wei available, ${amountWei} wei requested.`,
-    );
-  }
-  console.log(`Withdrawing ${amountUqor} uqor (withdrawalId ${withdrawalId})…`);
-  const hash = await writeContract(wallet, {
-    address: contract,
-    abi,
-    functionName: "withdraw",
-    args: [amountWei, withdrawalId],
-    value: 0n,
-    account: wallet.account ?? null,
-    chain: wallet.chain,
-  } as never);
-  const receipt = await client.publicClient.waitForTransactionReceipt({ hash });
-  const cosmos = await cosmosHashForEvmTx(client.publicClient, hash);
-  console.log(`  tx: ${hash}`);
-  console.log(`  cosmos: ${cosmos.cosmosHash} (block ${cosmos.block})`);
-  console.log(`  block: ${receipt.blockNumber}`);
-  appendUsageStep(contract, {
-    command: "withdraw",
-    amountUqor: amountUqor.toString(),
-    withdrawalId,
-    tx: hash,
-    cosmosTx: cosmos.cosmosHash,
-    block: cosmos.block,
-  });
-  console.log("Recorded in deployments/usage.json.");
 }
 
 main().catch((err: unknown) => {

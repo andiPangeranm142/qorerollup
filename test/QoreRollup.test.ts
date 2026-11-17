@@ -1,7 +1,9 @@
 import { expect } from "chai";
 import { ethers, artifacts } from "hardhat";
+import type { Address as ViemAddress } from "viem";
 import type { QoreRollup, MockPqcKeyStatus, MockPqcVerify } from "../typechain-types";
 import type { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
+import { buildStateTree } from "../src/lib/merkle";
 
 const KEY_STATUS_PRECOMPILE = "0x0000000000000000000000000000000000000A02";
 const VERIFY_PRECOMPILE = "0x0000000000000000000000000000000000000A01";
@@ -22,9 +24,6 @@ const STATE_ROOT_2 = ethers.keccak256(ethers.toUtf8Bytes("state-root-2"));
 const TX_DATA_2 = ethers.keccak256(ethers.toUtf8Bytes("tx-data-2"));
 const ENC_DATA_2 = ethers.keccak256(ethers.toUtf8Bytes("enc-data-2"));
 
-const WITHDRAWAL_ID_1 = ethers.keccak256(ethers.toUtf8Bytes("withdrawal-1"));
-const WITHDRAWAL_ID_2 = ethers.keccak256(ethers.toUtf8Bytes("withdrawal-2"));
-
 /**
  * Rules under test:
  *  - Only the sequencer may settle batches, and only with an ML-DSA-87
@@ -34,8 +33,14 @@ const WITHDRAWAL_ID_2 = ethers.keccak256(ethers.toUtf8Bytes("withdrawal-2"));
  *    The sequencer's key must be registered AND possession-proven.
  *  - The batch digest is domain-separated (tag, chain id, contract,
  *    batch id, three hashes); each batch id is used exactly once.
- *  - Deposits credit the L1 ledger; withdrawals draw against it with a
- *    single-use nullifier (withdrawalId), checks-effects-interactions.
+ *  - Deposits credit the L1 ledger. Withdrawals are proven against a
+ *    settled batch's Merkle state root: the caller proves their own
+ *    (balance, nonce) leaf with a sorted-pair Merkle proof — no
+ *    sequencer involvement — and a cumulative per-account cap
+ *    (withdrawnAmount) means the total ever withdrawn can never exceed
+ *    the largest leaf balance proven. The TypeScript tree in
+ *    src/lib/merkle.ts is cross-checked against this contract here:
+ *    every proof in the withdraw tests is computed by the TS library.
  *  - Locally, both precompiles are mocks installed at their real addresses
  *    via hardhat_setCode; the real cryptography is verified live on Diana.
  */
@@ -112,6 +117,7 @@ describe("QoreRollup", function () {
       expect(await rollup.totalDeposited()).to.equal(0);
       expect(await rollup.totalWithdrawn()).to.equal(0);
       expect(await rollup.deposits(alice.address)).to.equal(0);
+      expect(await rollup.withdrawnAmount(alice.address)).to.equal(0);
     });
 
     it("exposes the documented precompile addresses", async function () {
@@ -362,88 +368,253 @@ describe("QoreRollup", function () {
     });
   });
 
-  describe("withdraw", function () {
-    it("pays out, updates balances and totals, sets the nullifier, emits Withdrawn", async function () {
+  describe("withdraw (Merkle proof, no sequencer)", function () {
+    // Balances are in uqor; 1 uqor = 1e12 wei. The contract is funded
+    // with 1 ether of deposits in beforeEach so payouts can land.
+    const ALICE_BALANCE = 100_000n; // 0.1 QOR
+    const BOB_BALANCE = 50_000n; // 0.05 QOR
+
+    /** Build a state tree with the TS library (cross-checks it vs the contract). */
+    function treeFor(
+      entries: Array<{ account: string; balance: bigint; nonce: number }>,
+    ) {
+      const balances = new Map(
+        entries.map(
+          (e) => [e.account.toLowerCase() as ViemAddress, e.balance] as const,
+        ),
+      );
+      const nonces = new Map(
+        entries.map(
+          (e) => [e.account.toLowerCase() as ViemAddress, e.nonce] as const,
+        ),
+      );
+      return buildStateTree(balances, nonces);
+    }
+
+    /** Settle one batch whose state root is the given Merkle root. */
+    async function settleRoot(stateRoot: string): Promise<bigint> {
+      const batchId = await rollup.batchCount();
+      await allowNextBatch(stateRoot, TX_DATA_1, ENC_DATA_1);
+      await rollup
+        .connect(sequencer)
+        .submitBatch(stateRoot, TX_DATA_1, ENC_DATA_1, DUMMY_SIGNATURE);
+      return batchId;
+    }
+
+    beforeEach(async function () {
       await rollup.connect(alice).deposit({ value: ethers.parseEther("1") });
+    });
+
+    it("pays out for a valid proof, sets the cumulative cap, emits Withdrawn", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batchId = await settleRoot(tree.root);
+      const proof = tree.proofs[alice.address.toLowerCase()] as string[];
+
       await expect(
-        rollup.connect(alice).withdraw(ethers.parseEther("0.4"), WITHDRAWAL_ID_1),
+        rollup
+          .connect(alice)
+          .withdraw(batchId, alice.address, ALICE_BALANCE, 0, proof),
       )
         .to.emit(rollup, "Withdrawn")
-        .withArgs(alice.address, ethers.parseEther("0.4"), WITHDRAWAL_ID_1);
-      expect(await rollup.deposits(alice.address)).to.equal(ethers.parseEther("0.6"));
-      // totalDeposited is cumulative ever-deposited: withdrawals never reduce it.
+        .withArgs(batchId, alice.address, ALICE_BALANCE);
+
+      expect(await rollup.withdrawnAmount(alice.address)).to.equal(ALICE_BALANCE);
+      expect(await rollup.totalWithdrawn()).to.equal(
+        ALICE_BALANCE * 10n ** 12n,
+      );
+      // v2 withdrawals do NOT touch the L1 deposit ledger.
+      expect(await rollup.deposits(alice.address)).to.equal(ethers.parseEther("1"));
       expect(await rollup.totalDeposited()).to.equal(ethers.parseEther("1"));
-      expect(await rollup.totalWithdrawn()).to.equal(ethers.parseEther("0.4"));
-      expect(await rollup.withdrawnIds(WITHDRAWAL_ID_1)).to.equal(true);
       expect(await ethers.provider.getBalance(await rollup.getAddress())).to.equal(
-        ethers.parseEther("0.6"),
+        ethers.parseEther("1") - ALICE_BALANCE * 10n ** 12n,
       );
     });
 
     it("changes the withdrawer's ether balance by the withdrawn amount", async function () {
-      await rollup.connect(alice).deposit({ value: ethers.parseEther("1") });
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batchId = await settleRoot(tree.root);
+      const proof = tree.proofs[alice.address.toLowerCase()] as string[];
       await expect(
-        rollup.connect(alice).withdraw(ethers.parseEther("0.25"), WITHDRAWAL_ID_1),
-      ).to.changeEtherBalance(alice, ethers.parseEther("0.25"));
+        rollup
+          .connect(alice)
+          .withdraw(batchId, alice.address, ALICE_BALANCE, 0, proof),
+      ).to.changeEtherBalance(alice, ALICE_BALANCE * 10n ** 12n);
     });
 
-    it("allows multiple withdrawals with distinct withdrawal ids", async function () {
-      await rollup.connect(alice).deposit({ value: ethers.parseEther("1") });
-      await rollup.connect(alice).withdraw(ethers.parseEther("0.3"), WITHDRAWAL_ID_1);
-      await rollup.connect(alice).withdraw(ethers.parseEther("0.7"), WITHDRAWAL_ID_2);
-      expect(await rollup.deposits(alice.address)).to.equal(0);
-      expect(await rollup.totalWithdrawn()).to.equal(ethers.parseEther("1"));
+    it("works with a single-leaf tree (empty proof)", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+      ]);
+      expect(tree.proofs[alice.address.toLowerCase()]).to.deep.equal([]);
+      const batchId = await settleRoot(tree.root);
+      await expect(
+        rollup.connect(alice).withdraw(batchId, alice.address, ALICE_BALANCE, 0, []),
+      )
+        .to.emit(rollup, "Withdrawn")
+        .withArgs(batchId, alice.address, ALICE_BALANCE);
+      expect(await rollup.withdrawnAmount(alice.address)).to.equal(ALICE_BALANCE);
     });
 
-    it("reverts on a zero withdrawal", async function () {
-      await rollup.connect(alice).deposit({ value: ethers.parseEther("1") });
+    it("reverts on a tampered proof element", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batchId = await settleRoot(tree.root);
+      const proof = [...(tree.proofs[alice.address.toLowerCase()] as string[])];
+      proof[0] = ethers.keccak256(ethers.toUtf8Bytes("tampered"));
       await expect(
-        rollup.connect(alice).withdraw(0, WITHDRAWAL_ID_1),
+        rollup
+          .connect(alice)
+          .withdraw(batchId, alice.address, ALICE_BALANCE, 0, proof),
+      ).to.be.revertedWithCustomError(rollup, "InvalidMerkleProof");
+    });
+
+    it("reverts when the proof belongs to another account", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batchId = await settleRoot(tree.root);
+      const bobsProof = tree.proofs[bob.address.toLowerCase()] as string[];
+      await expect(
+        rollup
+          .connect(alice)
+          .withdraw(batchId, alice.address, ALICE_BALANCE, 0, bobsProof),
+      ).to.be.revertedWithCustomError(rollup, "InvalidMerkleProof");
+    });
+
+    it("reverts when the claimed balance does not match the leaf", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batchId = await settleRoot(tree.root);
+      const proof = tree.proofs[alice.address.toLowerCase()] as string[];
+      await expect(
+        rollup
+          .connect(alice)
+          .withdraw(batchId, alice.address, ALICE_BALANCE + 1n, 0, proof),
+      ).to.be.revertedWithCustomError(rollup, "InvalidMerkleProof");
+    });
+
+    it("reverts when the claimed nonce does not match the leaf", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 3 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batchId = await settleRoot(tree.root);
+      const proof = tree.proofs[alice.address.toLowerCase()] as string[];
+      await expect(
+        rollup
+          .connect(alice)
+          .withdraw(batchId, alice.address, ALICE_BALANCE, 2, proof),
+      ).to.be.revertedWithCustomError(rollup, "InvalidMerkleProof");
+    });
+
+    it("reverts when msg.sender is not the account", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batchId = await settleRoot(tree.root);
+      const proof = tree.proofs[alice.address.toLowerCase()] as string[];
+      // Bob presents Alice's valid proof for Alice's account — the
+      // contract still refuses: only the account owner withdraws.
+      await expect(
+        rollup
+          .connect(bob)
+          .withdraw(batchId, alice.address, ALICE_BALANCE, 0, proof),
+      )
+        .to.be.revertedWithCustomError(rollup, "NotAccountOwner")
+        .withArgs(bob.address, alice.address);
+    });
+
+    it("reverts on a second withdrawal against the same batch (amount zero)", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batchId = await settleRoot(tree.root);
+      const proof = tree.proofs[alice.address.toLowerCase()] as string[];
+      await rollup
+        .connect(alice)
+        .withdraw(batchId, alice.address, ALICE_BALANCE, 0, proof);
+      await expect(
+        rollup
+          .connect(alice)
+          .withdraw(batchId, alice.address, ALICE_BALANCE, 0, proof),
+      ).to.be.revertedWithCustomError(rollup, "ZeroWithdraw");
+      expect(await rollup.totalWithdrawn()).to.equal(ALICE_BALANCE * 10n ** 12n);
+    });
+
+    it("pays only the difference against a later batch with a higher balance", async function () {
+      const tree0 = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batch0 = await settleRoot(tree0.root);
+      const proof0 = tree0.proofs[alice.address.toLowerCase()] as string[];
+      await rollup
+        .connect(alice)
+        .withdraw(batch0, alice.address, ALICE_BALANCE, 0, proof0);
+
+      const HIGHER = 150_000n;
+      const tree1 = treeFor([
+        { account: alice.address, balance: HIGHER, nonce: 1 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batch1 = await settleRoot(tree1.root);
+      const proof1 = tree1.proofs[alice.address.toLowerCase()] as string[];
+      await expect(
+        rollup.connect(alice).withdraw(batch1, alice.address, HIGHER, 1, proof1),
+      )
+        .to.emit(rollup, "Withdrawn")
+        .withArgs(batch1, alice.address, HIGHER - ALICE_BALANCE);
+      expect(await rollup.withdrawnAmount(alice.address)).to.equal(HIGHER);
+      expect(await rollup.totalWithdrawn()).to.equal(HIGHER * 10n ** 12n);
+    });
+
+    it("reverts against a later batch with a lower balance", async function () {
+      const tree0 = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batch0 = await settleRoot(tree0.root);
+      const proof0 = tree0.proofs[alice.address.toLowerCase()] as string[];
+      await rollup
+        .connect(alice)
+        .withdraw(batch0, alice.address, ALICE_BALANCE, 0, proof0);
+
+      const LOWER = 40_000n;
+      const tree1 = treeFor([
+        { account: alice.address, balance: LOWER, nonce: 1 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const batch1 = await settleRoot(tree1.root);
+      const proof1 = tree1.proofs[alice.address.toLowerCase()] as string[];
+      await expect(
+        rollup.connect(alice).withdraw(batch1, alice.address, LOWER, 1, proof1),
       ).to.be.revertedWithCustomError(rollup, "ZeroWithdraw");
     });
 
-    it("reverts when the withdrawal id was already used", async function () {
-      await rollup.connect(alice).deposit({ value: ethers.parseEther("1") });
-      await rollup.connect(alice).withdraw(ethers.parseEther("0.1"), WITHDRAWAL_ID_1);
+    it("reverts for an unknown batch id", async function () {
+      const tree = treeFor([
+        { account: alice.address, balance: ALICE_BALANCE, nonce: 0 },
+        { account: bob.address, balance: BOB_BALANCE, nonce: 0 },
+      ]);
+      const proof = tree.proofs[alice.address.toLowerCase()] as string[];
       await expect(
-        rollup.connect(alice).withdraw(ethers.parseEther("0.1"), WITHDRAWAL_ID_1),
+        rollup.connect(alice).withdraw(0, alice.address, ALICE_BALANCE, 0, proof),
       )
-        .to.be.revertedWithCustomError(rollup, "WithdrawalAlreadyUsed")
-        .withArgs(WITHDRAWAL_ID_1);
-      // The nullifier is global: another user cannot reuse it either.
-      await rollup.connect(bob).deposit({ value: ethers.parseEther("1") });
-      await expect(
-        rollup.connect(bob).withdraw(ethers.parseEther("0.1"), WITHDRAWAL_ID_1),
-      )
-        .to.be.revertedWithCustomError(rollup, "WithdrawalAlreadyUsed")
-        .withArgs(WITHDRAWAL_ID_1);
-    });
-
-    it("reverts on insufficient deposit", async function () {
-      await rollup.connect(alice).deposit({ value: ethers.parseEther("0.5") });
-      await expect(
-        rollup.connect(alice).withdraw(ethers.parseEther("1"), WITHDRAWAL_ID_1),
-      )
-        .to.be.revertedWithCustomError(rollup, "InsufficientDeposit")
-        .withArgs(ethers.parseEther("1"), ethers.parseEther("0.5"));
-    });
-
-    it("cannot withdraw another user's deposit", async function () {
-      await rollup.connect(bob).deposit({ value: ethers.parseEther("2") });
-      await expect(
-        rollup.connect(alice).withdraw(ethers.parseEther("1"), WITHDRAWAL_ID_1),
-      )
-        .to.be.revertedWithCustomError(rollup, "InsufficientDeposit")
-        .withArgs(ethers.parseEther("1"), 0);
-      expect(await rollup.deposits(bob.address)).to.equal(ethers.parseEther("2"));
-    });
-
-    it("cannot withdraw with no deposit at all", async function () {
-      await expect(
-        rollup.connect(alice).withdraw(ethers.parseEther("0.001"), WITHDRAWAL_ID_1),
-      )
-        .to.be.revertedWithCustomError(rollup, "InsufficientDeposit")
-        .withArgs(ethers.parseEther("0.001"), 0);
+        .to.be.revertedWithCustomError(rollup, "BatchNotFound")
+        .withArgs(0);
     });
   });
 

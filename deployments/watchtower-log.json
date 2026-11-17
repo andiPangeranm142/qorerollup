@@ -57,6 +57,117 @@
         }
       ],
       "allOk": true
+    },
+    {
+      "at": "2026-11-17T10:35:05.253Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 3,
+      "decryptCheck": "enabled",
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-17T10:35:13.861Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 3,
+      "decryptCheck": "enabled",
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": false,
+          "failures": [
+            "batch file stateRoot differs from the on-chain record",
+            "replayed state root does not match the batch file's stateRoot",
+            "Merkle root recomputed from the batch file's leaves does not match the batch file's stateRoot",
+            "Merkle proof for 0x0140a056ee37d5240b0397ecdf1347da80e33b9f does not verify against the batch stateRoot",
+            "Merkle proof for 0x1111111111111111111111111111111111111111 does not verify against the batch stateRoot",
+            "Merkle proof for 0x2222222222222222222222222222222222222222 does not verify against the batch stateRoot",
+            "Merkle proof for 0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f does not verify against the batch stateRoot",
+            "decrypted payload newStateRoot does not match the batch file"
+          ]
+        },
+        {
+          "batchId": 2,
+          "ok": false,
+          "failures": [
+            "prevStateRoot does not match the previous batch's state root"
+          ]
+        }
+      ],
+      "allOk": false
+    },
+    {
+      "at": "2026-11-17T10:35:22.924Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 3,
+      "decryptCheck": "enabled",
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-17T10:39:59.556Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 3,
+      "decryptCheck": "enabled",
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
     }
   ]
 }

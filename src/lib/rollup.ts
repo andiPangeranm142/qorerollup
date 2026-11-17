@@ -8,18 +8,21 @@
  * tests pin the digests against independently recomputed values.
  *
  * STATE MODEL — read this before assuming anything:
- * - The "state root" is a HASH COMMITMENT over the sorted set of non-zero
- *   balances, NOT a Merkle root: there are no inclusion proofs. It is
- *   keccak256(abi.encodePacked(prevStateRoot, (address, uint256 balance)...))
- *   with entries sorted ascending by address and zero balances omitted.
- *   Anyone holding the full balance set can recompute it; nobody can prove
- *   a single balance without revealing the whole set. That is a deliberate
- *   demo-grade simplification — see THREAT_MODEL.md.
+ * - The "state root" is the MERKLE ROOT over the post-batch state: one
+ *   leaf per non-zero balance, leaf =
+ *   keccak256(abi.encodePacked(account, balance, nonce)), binary tree
+ *   with sorted pairs (OpenZeppelin MerkleProof convention). See
+ *   src/lib/merkle.ts. Any account can prove its balance against a
+ *   settled root with a Merkle proof and withdraw directly from the
+ *   contract — no sequencer help (contracts/QoreRollup.sol `withdraw`).
  * - Balances live off-chain in deployments/state.json. L1 deposits are
  *   recorded by the contract (deposits mapping) but this demo does NOT
  *   automatically credit them into rollup balances: the operator seeds
  *   state.json. A production rollup would credit deposits on-chain.
  * - Nonces start at 0 per account and increment by exactly 1 per tx.
+ *   The nonce is part of the leaf, so a leaf proves (balance, nonce)
+ *   together — a stale leaf (old nonce) cannot be replayed after the
+ *   account's nonce moved on.
  */
 import { pqcVerify } from "@qorechain/sdk";
 import {
@@ -28,11 +31,19 @@ import {
   hexToBytes,
   keccak256,
   stringToHex,
-  toHex,
   type Address,
   type Hex,
 } from "viem";
 import { unsealBatchPayload } from "./kem";
+import {
+  buildStateTree,
+  leafHash,
+  merkleLeafFromJson,
+  stateLeaves,
+  verifyProof,
+  type MerkleLeaf,
+  type MerkleLeafJson,
+} from "./merkle";
 
 /** One rollup transaction. Amounts are in uqor, the rollup's unit, 1:1 with the native lane's uqor (1 QOR = 10^6 uqor). */
 export interface RollupTx {
@@ -98,6 +109,10 @@ export interface ApplyTxsResult {
   newBalances: Map<Address, bigint>;
   /** Nonces after applying, keys lowercased. */
   newNonces: Map<Address, number>;
+  /** State leaves of the post-batch state (non-zero balances, sorted). */
+  leaves: MerkleLeaf[];
+  /** Merkle proof per account (lowercase address) against newStateRoot. */
+  proofs: Record<string, Hex[]>;
 }
 
 /**
@@ -108,14 +123,23 @@ export interface ApplyTxsResult {
  * - a nonce that does not equal the sender's current nonce (replay or gap),
  * - an insufficient sender balance.
  *
- * The new state root is keccak256(abi.encodePacked(prevStateRoot, then one
- * (address, uint256 balance) pair per non-zero balance, sorted ascending by
- * address)). This is a hash commitment over the sorted balance set, NOT a
- * Merkle root: it commits to the whole set at once and supports no
- * per-account inclusion proof.
+ * The new state root is the MERKLE ROOT over the post-batch state (see
+ * src/lib/merkle.ts): one leaf per non-zero balance, sorted ascending by
+ * address, leaf = keccak256(abi.encodePacked(account, balance, nonce)),
+ * binary tree with sorted pairs. The previous root does NOT feed the new
+ * root — the root commits to the current state alone, and the batch chain
+ * is enforced by the prevStateRoot fields and the watchtower's replay.
+ * A drained account (zero balance) has no leaf and leaves no trace in
+ * the tree, but its nonce still moved — so a batch that drains an
+ * account does NOT produce the same root as a batch that never funded
+ * it (the nonce is part of the leaf).
  */
 export function applyTxs(
-  prevStateRoot: Hex,
+  // Kept for API stability and to document the chain: the new root does
+  // NOT depend on the previous root (a Merkle root commits to the current
+  // state alone). Callers still pass it, and verifyBatch checks the
+  // batch file's prevStateRoot against the previous batch's root.
+  _prevStateRoot: Hex,
   prevBalances: Map<Address, bigint>,
   txs: RollupTx[],
   prevNonces: Map<Address, number> = new Map(),
@@ -162,16 +186,10 @@ export function applyTxs(
   for (const [addr, bal] of [...balances]) {
     if (bal === 0n) balances.delete(addr);
   }
-  const entries = [...balances.entries()].sort(([a], [b]) =>
-    a < b ? -1 : a > b ? 1 : 0,
-  );
-  // Exactly abi.encodePacked(prevStateRoot, (address, uint256)...):
-  // 32-byte root, then 20-byte address + 32-byte balance per entry.
-  const packed = concat([
-    prevStateRoot,
-    ...entries.flatMap(([addr, bal]) => [addr as Hex, toHex(bal, { size: 32 })]),
-  ]);
-  return { newStateRoot: keccak256(packed), newBalances: balances, newNonces: nonces };
+  // The state root is the Merkle root over the post-batch state leaves
+  // (non-zero balances, sorted by address; nonce is part of each leaf).
+  const { root, leaves, proofs } = buildStateTree(balances, nonces);
+  return { newStateRoot: root, newBalances: balances, newNonces: nonces, leaves, proofs };
 }
 
 /**
@@ -237,12 +255,15 @@ export interface BatchPayload {
 /**
  * A settled batch as stored in deployments/batches/batch-<id>.json.
  * `balances`/`nonces` are the POST-batch state, stored so the watchtower can
- * replay the chain of batches without any other input.
+ * replay the chain of batches without any other input. `leaves`/`proofs`
+ * are the post-batch Merkle state tree, stored so any account can withdraw
+ * with its proof and no sequencer help.
  */
 export interface BatchFile {
   batchId: number;
   txs: RollupTxJson[];
   prevStateRoot: Hex;
+  /** The post-batch Merkle state root (see src/lib/merkle.ts). */
   stateRoot: Hex;
   txDataCommitment: Hex;
   encryptedDataHash: Hex;
@@ -261,6 +282,10 @@ export interface BatchFile {
   balances: Record<string, string>;
   /** Post-batch nonces: address (lowercase) -> nonce. */
   nonces: Record<string, number>;
+  /** Post-batch Merkle leaves (non-zero balances, sorted by address). */
+  leaves: MerkleLeafJson[];
+  /** Merkle proof per account (lowercase address) against stateRoot. */
+  proofs: Record<string, Hex[]>;
   /**
    * PRE-batch balances/nonces (optional for files written before this
    * field existed). The watchtower replays from these: batch 0's pre-state
@@ -325,6 +350,11 @@ function canonicalTxs(txs: RollupTxJson[]): string {
  *  (b) the tx commitment, the encrypted-data hash and the state transition
  *      recompute from the batch file and match BOTH the batch file and the
  *      on-chain record;
+ *  (b4) the Merkle state tree: the batch file's leaves recompute to the
+ *      file's stateRoot AND to the on-chain root, every leaf's hash
+ *      recomputes from its (account, balance, nonce), the leaves match
+ *      the replayed post-batch state exactly, and every leaf's proof
+ *      verifies against the root;
  *  (c) the on-chain receipt hash matches the recomputed receipt;
  *  (d) when a KEM secret key is given, the sealed blob decrypts to a payload
  *      that matches the batch file.
@@ -397,16 +427,79 @@ export function verifyBatch(
   if (lower(batch.stateRoot) !== lower(onChain.stateRoot)) {
     failures.push("batch file stateRoot differs from the on-chain record");
   }
+  let replayedBalances: Map<Address, bigint> | undefined;
+  let replayedNonces: Map<Address, number> | undefined;
   try {
-    const { newStateRoot } = applyTxs(batch.prevStateRoot, ctx.prevBalances, txs, ctx.prevNonces);
-    if (lower(newStateRoot) !== lower(batch.stateRoot)) {
+    const replayed = applyTxs(batch.prevStateRoot, ctx.prevBalances, txs, ctx.prevNonces);
+    replayedBalances = replayed.newBalances;
+    replayedNonces = replayed.newNonces;
+    if (lower(replayed.newStateRoot) !== lower(batch.stateRoot)) {
       failures.push("replayed state root does not match the batch file's stateRoot");
     }
-    if (lower(newStateRoot) !== lower(onChain.stateRoot)) {
+    if (lower(replayed.newStateRoot) !== lower(onChain.stateRoot)) {
       failures.push("replayed state root does not match the on-chain stateRoot");
     }
   } catch (err) {
     failures.push(`state transition replay failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // (b4) Merkle state tree: leaves recompute to the root, match the
+  // replayed post-state, and every proof verifies. This is what makes
+  // withdrawals possible — a batch whose leaves are wrong would strand
+  // users who cannot prove their balance.
+  if (!Array.isArray(batch.leaves) || typeof batch.proofs !== "object" || batch.proofs === null) {
+    failures.push("batch file has no Merkle leaves/proofs (pre-v2 batch file)");
+  } else {
+    let leaves: MerkleLeaf[];
+    try {
+      leaves = batch.leaves.map(merkleLeafFromJson);
+    } catch (err) {
+      failures.push(`batch leaves are malformed: ${err instanceof Error ? err.message : err}`);
+      leaves = [];
+    }
+    if (leaves.length > 0) {
+      // Each leaf hash recomputes from its (account, balance, nonce).
+      for (const l of leaves) {
+        if (lower(leafHash(l.account, l.balance, l.nonce)) !== lower(l.leaf)) {
+          failures.push(`leaf for ${l.account} does not match its (account, balance, nonce)`);
+        }
+      }
+      // The leaves recompute to the file's root and the on-chain root.
+      const { root: leavesRoot } = buildStateTree(
+        new Map(leaves.map((l) => [l.account.toLowerCase() as Address, l.balance] as const)),
+        new Map(leaves.map((l) => [l.account.toLowerCase() as Address, l.nonce] as const)),
+      );
+      if (lower(leavesRoot) !== lower(batch.stateRoot)) {
+        failures.push("Merkle root recomputed from the batch file's leaves does not match the batch file's stateRoot");
+      }
+      if (lower(leavesRoot) !== lower(onChain.stateRoot)) {
+        failures.push("Merkle root recomputed from the batch file's leaves does not match the on-chain stateRoot");
+      }
+      // Every leaf's proof verifies against the root.
+      for (const l of leaves) {
+        const proof = batch.proofs[l.account.toLowerCase()];
+        if (!Array.isArray(proof)) {
+          failures.push(`no Merkle proof stored for ${l.account}`);
+        } else if (!verifyProof(l.leaf, proof, batch.stateRoot)) {
+          failures.push(`Merkle proof for ${l.account} does not verify against the batch stateRoot`);
+        }
+      }
+      // The leaves match the replayed post-batch state exactly (no leaf
+      // added, removed, or re-valued versus the tx replay).
+      if (replayedBalances && replayedNonces) {
+        const expectedLeaves = stateLeaves(replayedBalances, replayedNonces);
+        const canonical = (ls: MerkleLeaf[]): string =>
+          JSON.stringify(
+            ls.map((l) => [l.account.toLowerCase(), l.balance.toString(), l.nonce, lower(l.leaf)]),
+          );
+        const sortedFileLeaves = [...leaves].sort((a, b) =>
+          a.account.toLowerCase() < b.account.toLowerCase() ? -1 : 1,
+        );
+        if (canonical(sortedFileLeaves) !== canonical(expectedLeaves)) {
+          failures.push("batch file leaves do not match the replayed post-batch state (balances/nonces)");
+        }
+      }
+    }
   }
 
   // Digest: recomputed from the ON-CHAIN values (what was actually settled).

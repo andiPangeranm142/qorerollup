@@ -1,0 +1,27 @@
+{
+  "at": "2026-11-17T10:34:18.869Z",
+  "network": "qorechain-diana",
+  "chainId": 9800,
+  "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+  "command": "merkle-withdraw",
+  "note": "Independent user wallet withdrawing with a Merkle proof against a settled batch state root — no sequencer involvement.",
+  "batchId": 2,
+  "account": "0x29cb5ABD4309b5A83A6A66e95CbdA1d88F060d4F",
+  "balanceUqor": "50000",
+  "amountUqor": "50000",
+  "nonce": 0,
+  "leaf": "0x7bcddcd273781c0e86e8c2ce5c0b4d70fc3a9ef1f98209c4a41a7ee6dc731e2a",
+  "proof": [
+    "0x1c1a6df03be0534d8a018f4d0109711615e9f114546669b33649b007c3837d46",
+    "0xcd7079ed2a92e27149c136dfdb1d81a291ce04f2db79ed0339ff302e023b897a",
+    "0x4f9f8d354ffd02607dd8c0c6a5fff144a373f2e5588b32d50185af80f07bcb90"
+  ],
+  "proofSteps": 3,
+  "stateRoot": "0x0098795f556cd7dd0034c5b374c4a1c7c9b0984bbc31d08aeb1c74b1bcd152ff",
+  "withdrawnBefore": "0",
+  "withdrawnAfter": "50000",
+  "tx": "0xaa57f3b235d317dc8d2caf2f2444ff0b27822145042490484dbda2bc8c33fc14",
+  "cosmosTx": "681E9D192A38ABB9D3F13DD1091015C07C01DB7B863E3295D825D032EF4591DD",
+  "block": 10250197,
+  "receiptStatus": "success"
+}

@@ -17,6 +17,7 @@ import {
   txDataCommitment,
   type RollupTx,
 } from "../src/lib/rollup";
+import { buildStateTree, verifyProof } from "../src/lib/merkle";
 
 const ALICE = "0x1111111111111111111111111111111111111111" as Address;
 const BOB = "0x2222222222222222222222222222222222222222" as Address;
@@ -126,15 +127,56 @@ describe("applyTxs", () => {
   it("drops a drained account from the commitment", () => {
     const drained = applyTxs(GENESIS_STATE_ROOT, funded, [tx(BOB, ALICE, 50n, 0)]);
     expect(drained.newBalances.has(BOB.toLowerCase() as Address)).to.equal(false);
-    // Same root as a batch that reaches the same final balance set from the
-    // same previous root without BOB ever holding a balance: the commitment
-    // covers the non-zero set only, so a zeroed account leaves no trace.
+    // The root is the Merkle root over the remaining leaves only: BOB
+    // has no leaf once drained.
+    expect(drained.leaves.map((l) => l.account)).to.deep.equal([
+      ALICE.toLowerCase(),
+    ]);
+    const { root } = buildStateTree(drained.newBalances, drained.newNonces);
+    expect(drained.newStateRoot).to.equal(root);
+    // ... but it is NOT the same root as a batch that reaches the same
+    // balances without BOB ever holding funds: the nonce is part of the
+    // leaf, so ALICE's nonce differs (0 here, 1 there) and the roots
+    // differ. A drained account leaves no leaf, but its history still
+    // shows in the nonces.
     const withoutBob = applyTxs(
       GENESIS_STATE_ROOT,
       new Map([[ALICE, 1050n]]),
       [tx(ALICE, ALICE, 1n, 0)],
     );
-    expect(drained.newStateRoot).to.equal(withoutBob.newStateRoot);
+    expect(drained.newStateRoot).to.not.equal(withoutBob.newStateRoot);
+  });
+
+  it("returns leaves and proofs that verify against the new root", () => {
+    const { newStateRoot, leaves, proofs } = applyTxs(
+      GENESIS_STATE_ROOT,
+      funded,
+      [tx(ALICE, BOB, 100n, 0), tx(ALICE, CAROL, 50n, 1)],
+    );
+    expect(leaves.map((l) => l.account)).to.deep.equal([
+      ALICE.toLowerCase(),
+      BOB.toLowerCase(),
+      CAROL.toLowerCase(),
+    ]);
+    for (const leaf of leaves) {
+      const proof = proofs[leaf.account.toLowerCase()] as `0x${string}`[];
+      expect(verifyProof(leaf.leaf, proof, newStateRoot)).to.equal(true);
+    }
+    expect(Object.keys(proofs).sort()).to.deep.equal(
+      leaves.map((l) => l.account.toLowerCase()).sort(),
+    );
+  });
+
+  it("the root is the Merkle root over the post-state leaves", () => {
+    const applied = applyTxs(GENESIS_STATE_ROOT, funded, [tx(ALICE, BOB, 100n, 0)]);
+    const { root } = buildStateTree(applied.newBalances, applied.newNonces);
+    expect(applied.newStateRoot).to.equal(root);
+  });
+
+  it("the root changes when a balance changes", () => {
+    const a = applyTxs(GENESIS_STATE_ROOT, funded, [tx(ALICE, BOB, 100n, 0)]);
+    const b = applyTxs(GENESIS_STATE_ROOT, funded, [tx(ALICE, BOB, 101n, 0)]);
+    expect(a.newStateRoot).to.not.equal(b.newStateRoot);
   });
 
   it("reverts on insufficient balance", () => {

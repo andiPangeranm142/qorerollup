@@ -23,6 +23,13 @@ owns the result.
 - The Hardhat test suites (`test/sequencer.test.ts`,
   `test/watchtower.test.ts`, `test/kem.test.ts`, plus the contract tests).
 - The threat model (`THREAT_MODEL.md`) and this note.
+- The v2 Merkle redesign (17 Nov 2026): the state root became a Merkle
+  root over (account, balance, nonce) leaves (`src/lib/merkle.ts`),
+  withdrawals became Merkle-proof withdrawals with a cumulative
+  per-account cap (no sequencer help, no nullifier), the batch files
+  gained leaves + proofs, and the watchtower gained Merkle verification
+  — replacing the v1 contract, whose history is archived in
+  `deployments/v1/`.
 
 The design follows the patterns of the team's earlier QoreChain projects
 (Quantum Vault, SealedBid): the ML-DSA-87 signing flow, the EVM window
@@ -66,10 +73,12 @@ resolve on the Diana explorer.
 ## Limits the AI is aware of
 
 The threat model (`THREAT_MODEL.md`) documents the demo-grade gaps
-honestly: no fraud or validity proofs, a hash commitment instead of a
-Merkle root, withdrawals checked against the L1 deposit ledger only, a
-single centralised sequencer, an advisory-only watchtower that shares its
-encoding library with the sequencer, and batch plaintext published
-alongside the ciphertext for verification. The AI wrote those sections
-itself and stands by them — they are the reason this entry is presented as
-a demo, not a production rollup.
+honestly: no fraud or validity proofs, a single centralised sequencer,
+an advisory-only watchtower that shares its encoding libraries with the
+sequencer, batch plaintext published alongside the ciphertext for
+verification, and withdrawals that depend on published batch data to
+construct a proof. (Two v1 gaps are closed in v2: the state root is now
+a Merkle root with inclusion proofs, and withdrawals are proven against
+the rollup state instead of the L1 deposit ledger alone.) The AI wrote
+those sections itself and stands by them — they are the reason this
+entry is presented as a demo, not a production rollup.

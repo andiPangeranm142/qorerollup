@@ -1,0 +1,13 @@
+{
+  "network": "qorechain-diana",
+  "chainId": 9800,
+  "contract": "0x96051b69a7d0e2236a3fe2e51fe33a55367d36c2",
+  "deployer": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+  "deployTx": "0xa2b176083386339f9f45d5faf6e11ebb272317b835e4a1a7524089b25c863636",
+  "deployTxCosmos": "D6B800EC3273750ACE8D67532E0AAA39C3FCFFD7B51C81E4D3272052CBBED6D7",
+  "deployBlock": 10249119,
+  "bytecodeSize": 3399,
+  "explorerContract": "https://explore.qore.network/address/0x96051b69a7d0e2236a3fe2e51fe33a55367d36c2",
+  "explorerDeployTx": "https://explore.qore.network/tx/D6B800EC3273750ACE8D67532E0AAA39C3FCFFD7B51C81E4D3272052CBBED6D7",
+  "deployedAt": "2026-11-17T10:08:39.859Z"
+}

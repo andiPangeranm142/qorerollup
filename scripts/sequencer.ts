@@ -24,6 +24,12 @@
  * contract but this demo does NOT auto-credit them into rollup balances —
  * see THREAT_MODEL.md. A settle with unfunded senders fails with an
  * "insufficient balance" error naming the account.
+ *
+ * State root (v2): the Merkle root over the post-batch balances (one leaf
+ * per non-zero balance, leaf = keccak256(account, balance, nonce), sorted
+ * pairs). Each batch file stores the leaves and every account's proof, so
+ * any account can withdraw with its proof and no sequencer help
+ * (scripts/merkle-withdraw.ts).
  */
 import {
   createEvmClient,
@@ -60,6 +66,7 @@ import {
   type RollupTx,
   type RollupTxJson,
 } from "../src/lib/rollup";
+import { merkleLeafToJson, type MerkleLeaf } from "../src/lib/merkle";
 import {
   generateKemKeypair,
   kemPublicKeyHash,
@@ -184,10 +191,10 @@ function appendUsageStep(contract: Address, step: Record<string, unknown>): void
     : [];
   steps.push({ at: new Date().toISOString(), ...step });
   writeJson(USAGE_PATH, {
+    ...(existing ?? {}),
     network: "qorechain-diana",
     chainId: TESTNET_CHAIN_ID,
     contract,
-    ...(existing ?? {}),
     steps,
   });
 }
@@ -347,8 +354,10 @@ async function settle(args: string[]): Promise<void> {
   let newStateRoot: Hex;
   let newBalances: Map<Address, bigint>;
   let newNonces: Map<Address, number>;
+  let leaves: MerkleLeaf[];
+  let proofs: Record<string, Hex[]>;
   try {
-    ({ newStateRoot, newBalances, newNonces } = applyTxs(
+    ({ newStateRoot, newBalances, newNonces, leaves, proofs } = applyTxs(
       state.stateRoot,
       balances,
       txs,
@@ -390,7 +399,7 @@ async function settle(args: string[]): Promise<void> {
   console.log(`contract: ${contract}`);
   console.log(`batch:    #${batchId} (${txs.length} txs)`);
   console.log(`prevRoot: ${state.stateRoot}`);
-  console.log(`newRoot:  ${newStateRoot}`);
+  console.log(`newRoot:  ${newStateRoot} (Merkle root, ${leaves.length} leaves)`);
   console.log(`commit:   ${commitment}`);
   console.log(`encHash:  ${encryptedDataHash}`);
   console.log(`digest:   ${digest}`);
@@ -457,6 +466,10 @@ async function settle(args: string[]): Promise<void> {
       [...newBalances.entries()].map(([addr, bal]) => [addr, bal.toString()]),
     ),
     nonces: Object.fromEntries(newNonces.entries()),
+    // Merkle state tree: leaves + every account's proof, so any account
+    // can withdraw against this batch with no sequencer help.
+    leaves: leaves.map(merkleLeafToJson),
+    proofs,
     // Pre-batch state, so the batch file is self-contained for watchtower
     // replay (batch 0's pre-state is the operator-seeded genesis funding).
     prevBalances: { ...state.balances },
@@ -474,6 +487,7 @@ async function settle(args: string[]): Promise<void> {
     command: "settle",
     batchId,
     txCount: txs.length,
+    leafCount: leaves.length,
     stateRoot: newStateRoot,
     txDataCommitment: commitment,
     encryptedDataHash,
