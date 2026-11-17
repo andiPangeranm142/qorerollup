@@ -196,7 +196,11 @@ path — the sequencer refuses to settle without `deposits.json`, and
 re-verifies every pending deposit against the on-chain logs before
 crediting it. The watchtower re-checks every credit after settlement
 (see [THREAT_MODEL.md](THREAT_MODEL.md) §4.13): a credit larger than
-its supporting L1 deposit fails the run.
+its supporting L1 deposit fails the run. The watcher runs on its own
+every 30 minutes (a scheduled job, since 17 Nov 2026) — deposits are
+picked up without any operator action; every run is recorded in
+`deployments/usage.json`, and the run log is committed to the repo
+daily.
 
 ## How to verify yourself
 

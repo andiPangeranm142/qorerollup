@@ -420,8 +420,9 @@ Trust boundaries:
   exceeding its supporting deposit fail at both the watcher/sequencer
   level and the watchtower level).
 - **Residual risk (honest liveness note):** the watcher is an
-  off-chain process with no schedule and no alerting — if it is down,
-  deposits queue until it runs again. Deposits are never lost,
+  off-chain process that runs on a 30-minute schedule (since 17 Nov
+  2026), with no alerting — if a run is missed, deposits queue until
+  the next run. Deposits are never lost,
   because the events stay on-chain and the next scan picks them up
   from the persisted last-processed block. But there is no forced
   inclusion: a sequencer that ignores a pending deposit (or never
@@ -449,7 +450,7 @@ deliberate gaps — not oversights:
 | Batch data | Plaintext published in `deployments/batches/` for verification; the on-chain commitment is to the ciphertext. Transparency chosen over confidentiality. | Real data-availability layer (DA committee, DA chain, or on-chain calldata/blobs) with the plaintext genuinely restricted. |
 | KEM keys | Single key held by the operator; no rotation, no threshold, no forward secrecy. | Rotating keys, threshold decryption, per-batch keys. |
 | User signatures | Rollup transactions are NOT signed by their senders; the sequencer can invent txs from any funded account. | Every rollup tx signed by its sender (ideally PQ-signed). |
-| Deposits | **Done:** deposit events credited into the rollup state by the sequencer via the deposit watcher, verifiable by the watchtower (checks (e)/(f)); the 0.3 QOR genesis deposit is the one hand-credited exception, recorded as such. Still demo-grade: the watcher is an off-chain process with no schedule, and there is no forced inclusion — a sequencer that ignores a deposit strands it. | On-chain deposit queue with forced inclusion, so the sequencer cannot ignore a deposit; on-chain reconciliation of rollup balances with L1 deposits. |
+| Deposits | **Done:** deposit events credited into the rollup state by the sequencer via the deposit watcher, verifiable by the watchtower (checks (e)/(f)); the 0.3 QOR genesis deposit is the one hand-credited exception, recorded as such. Still demo-grade: the watcher is an off-chain process (runs on a 30-minute schedule since 17 Nov 2026), and there is no forced inclusion — a sequencer that ignores a deposit strands it. | On-chain deposit queue with forced inclusion, so the sequencer cannot ignore a deposit; on-chain reconciliation of rollup balances with L1 deposits. |
 | Key management | Mode-600 files on the operator's machine. | HSM/KMS, multisig, timelocks, key rotation. |
 
 ## 6. What would change the assessment
