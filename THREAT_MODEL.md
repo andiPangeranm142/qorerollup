@@ -1,0 +1,225 @@
+# QoreRollup — Threat Model
+
+An honest account of what QoreRollup protects, what it assumes, and where it
+is demo-grade rather than production-grade. Written for the QoreChain
+Developer Fest (Protocol Builders category). Nothing in this document is a
+claim of production security.
+
+## 1. System overview
+
+An off-chain sequencer collects transactions into batches, seals each batch
+payload with ML-KEM-1024, signs the batch digest with ML-DSA-87, and settles
+it on the QoreRollup contract on the QoreChain Diana testnet. The contract
+verifies the ML-DSA-87 signature via the `pqcVerify` precompile against the
+sequencer's registered key and records the batch state root, the tx-data
+commitment, the encrypted-data hash, and a settlement receipt hash. Users
+deposit QOR into the contract and withdraw from it. A watchtower re-verifies
+every settled batch off-chain.
+
+Trust boundaries:
+
+- **On-chain (trusted):** the QoreRollup contract, the `pqcVerify`
+  precompile, the PQC key registry, the EVM authorisation-window mechanism,
+  and the Diana chain itself.
+- **Off-chain, operator-run (trusted by necessity):** the sequencer, its
+  state files (`deployments/state.json`, `deployments/batches/`,
+  `deployments/mempool.json`), and the watchtower.
+- **Public data:** batch files (including plaintext transactions), the KEM
+  public key, and all on-chain records.
+
+## 2. Assets
+
+| Asset | Where it lives | What loss means |
+|---|---|---|
+| Deposited QOR | QoreRollup contract (`deposits`, `totalDeposited`) | Direct loss of user funds if withdrawal logic is wrong |
+| Batch integrity (state roots, commitments) | On-chain batch records + off-chain batch files | A false state root becomes the "truth" for the rollup |
+| Sequencer ML-DSA-87 key | Derived from the sequencer mnemonic (`../.env`, mode 600) | Whoever holds it can settle arbitrary batches |
+| Sequencer EVM key | `../.env` (mode 600) | Whoever holds it can submit batches and drain the sequencer's own deposits |
+| KEM secret key | `../kem-key.json` (mode 600, outside the repo) | Whoever holds it can decrypt sealed batch payloads |
+| Rollup state files | `deployments/state.json`, `deployments/batches/` | Corruption or loss breaks the sequencer/watchtower chain of verification |
+
+## 3. Trust assumptions
+
+1. **Single centralised sequencer.** There is exactly one sequencer, run by
+   the operator. It chooses transaction order, builds batches, and holds the
+   signing key. There is no decentralisation, no leader rotation, and no
+   forced-inclusion mechanism: if the sequencer censors a transaction, that
+   transaction never settles. This is the largest single trust assumption.
+2. **Chain-enforced EVM windows.** Every EVM transaction from the sequencer
+   requires a registered ML-DSA-87 key and a live authorisation window. The
+   sequencer never opens a window itself — the operator does, deliberately —
+   so a compromised sequencer process alone cannot spend without a window
+   already being open.
+3. **Precompile correctness.** The `pqcVerify` precompile correctly verifies
+   ML-DSA-87 signatures against the registered key, and the PQC key registry
+   returns the key that was actually registered. If either is wrong, the
+   on-chain signature check is meaningless.
+4. **Operator key hygiene.** The mnemonic, the EVM private key, and the KEM
+   secret key live in mode-600 files outside the repo and are never printed,
+   committed, or shared. A leak of any of them is out of scope for the code
+   to prevent.
+5. **Honest chain data for the watchtower.** The watchtower reads batch
+   records and the registered PQC key from the chain and treats them as
+   ground truth.
+
+## 4. Attack surface and mitigations
+
+### 4.1 Sequencer key compromise
+
+- **Attack:** an attacker obtains the sequencer mnemonic (or EVM key) and
+  settles batches with arbitrary state roots, stealing the rollup's notion
+  of balances.
+- **Mitigations in place:** keys live outside the repo in mode-600 files;
+  scripts never print them; `settle` refuses to run unless the derived
+  account is exactly the expected sequencer address (a wrong `.env` fails
+  loudly instead of signing with a stranger's key); settlement still needs
+  a live EVM window, which the sequencer cannot open itself.
+- **Residual risk:** with the key AND an open window, the attacker can
+  settle anything. There is no multisig, no timelock, and no fraud-proof
+  challenge period. (Demo-grade — see §5.)
+
+### 4.2 Malicious or buggy sequencer settling a false state root
+
+- **Attack:** the sequencer settles a state root that does not follow from
+  the batch's transactions (e.g. crediting itself funds).
+- **Mitigations in place:** the contract verifies the ML-DSA-87 signature,
+  which binds the state root, the tx commitment, and the encrypted-data
+  hash together — a settled root cannot later be swapped for another
+  without a new signature. The watchtower replays every batch's state
+  transition from the previous batch's balances and flags any root that
+  does not follow from the transactions. Batch files publish the plaintext
+  transactions, so anyone can replay them.
+- **Residual risk:** the watchtower is advisory only — it cannot halt
+  settlement, revert a batch, or slash the sequencer. Detection is not
+  prevention. And the watchtower shares the `rollup.ts` encoding library
+  with the sequencer, so a bug in that library would be invisible to the
+  watchtower (both sides would compute the same wrong answer).
+
+### 4.3 Transaction replay / reordering / censorship
+
+- **Replay:** each transaction carries a per-account nonce starting at 0,
+  enforced in `applyTxs` and persisted in `state.json`. A replayed tx has
+  a stale nonce and the batch build fails. Nonces are also bound into the
+  tx encoding, so a tx cannot be rebound to a different nonce without
+  changing the commitment.
+- **Reordering within a batch:** the commitment is over the ordered
+  concatenation of encodings, so any reordering changes the commitment and
+  invalidates the signature. (Ordering *across* batches is the sequencer's
+  choice — see §3.1.)
+- **Censorship:** unmitigated by design (single sequencer, no forced
+  inclusion). Users can see their tx missing from the published batch
+  files, but cannot force it in.
+- **Cross-chain replay:** the batch digest binds the EVM chain id and the
+  contract address, so a signature for Diana cannot be replayed on another
+  chain or another deployment.
+
+### 4.4 Withdrawal abuse
+
+- **Attack:** withdraw more than deposited, or withdraw the same deposit
+  twice.
+- **Mitigations in place:** the contract tracks `deposits` per address and
+  `withdrawnIds`; `withdraw` checks the caller's deposit balance and marks
+  the withdrawal id used.
+- **Residual risk (demo-grade):** withdrawal checks the **L1 deposit
+  ledger only** — it does not verify a proof that the withdrawer holds
+  that balance in the rollup state. The rollup balance set and the L1
+  deposit ledger are two separate books that this demo never reconciles:
+  deposits are not auto-credited into rollup balances, and withdrawals do
+  not burn rollup balances. A user who received rollup funds off-chain
+  cannot withdraw them on the basis of the rollup state, and the contract
+  cannot tell whether a withdrawal corresponds to any rollup activity.
+
+### 4.5 KEM key compromise / batch data exposure
+
+- **Attack:** an attacker obtains the KEM secret key and decrypts sealed
+  batch payloads, learning transaction contents.
+- **Mitigations in place:** the secret key lives outside the repo
+  (mode 600); the public key file is the only KEM material committed;
+  `keygen` refuses to overwrite existing keys (no silent rotation that
+  could orphan old batches or swap in an attacker's key).
+- **Residual risk:** a single KEM key is held by the operator — no key
+  rotation schedule, no threshold decryption, no forward secrecy across
+  batches. Worse, in this demo the protection is largely illustrative:
+  the batch plaintext is published in `deployments/batches/` alongside
+  the ciphertext so the watchtower (and anyone else) can verify the batch.
+  The on-chain commitment is genuinely to the ciphertext, and the
+  encryption itself is real (ML-KEM-1024 + AES-256-GCM, tested with
+  tamper detection), but the plaintext is not actually hidden from anyone
+  who can read the repo. This is a deliberate transparency trade-off for a
+  demo and a judging artefact — it is NOT a confidentiality design.
+  (See §5.)
+
+### 4.6 State-file tampering / loss
+
+- **Attack:** `state.json` or a batch file is edited (or deleted), so the
+  sequencer builds on a false history or the watchtower cannot verify.
+- **Mitigations in place:** `settle` refuses to run when the local batch
+  count disagrees with the on-chain `batchCount`, so a reset or rolled-back
+  `state.json` fails loudly instead of settling a duplicate batch id. The
+  watchtower replays the whole chain from genesis, so an edited batch file
+  fails against the on-chain record (commitment, state root, digest,
+  signature, receipt — any of them). A missing batch file is reported as a
+  FAIL and stops the chained verification.
+- **Residual risk:** the files are local and unprotected — there is no
+  signed checkpoint or backup. Losing `state.json` loses the rollup's
+  balance history (recoverable only by replaying all batch files from
+  genesis, which the watchtower's chaining logic effectively does).
+
+### 4.7 Mempool manipulation
+
+- **Attack:** a tx is inserted into, removed from, or edited in
+  `mempool.json` before settlement.
+- **Mitigations in place:** there is no public mempool API — the file is
+  local to the operator's machine, and `enqueue` validates addresses and
+  amounts and assigns nonces from the settled state plus pending txs. A
+  tampered mempool still has to pass `applyTxs` (balances, nonces) at
+  settle time, and the settled batch is published for anyone to audit.
+- **Residual risk:** anyone with write access to the operator's machine
+  can already do worse (steal the keys). No per-tx user signatures exist:
+  transactions in the mempool are not signed by their senders, so the
+  sequencer can invent transactions from any account that holds a rollup
+  balance. User-signed rollup transactions are a production requirement
+  this demo does not have.
+
+### 4.8 Dependency / supply-chain risk
+
+- The crypto comes from audited libraries (`@noble/post-quantum` for
+  ML-KEM, `@qorechain/sdk` for ML-DSA-87) rather than hand-rolled
+  implementations. The digest formulas are pinned by tests against
+  independently recomputed values. No dependency is fetched at runtime.
+
+### 4.9 Denial of service
+
+- A huge mempool makes `settle` build one enormous batch (there is no
+  batch-size cap). The settlement transaction itself is small (only
+  hashes and a signature go on-chain), so the on-chain cost stays bounded,
+  but the off-chain sealing and replay work grows with the batch. No rate
+  limiting exists because there is no public intake.
+
+## 5. DEMO-GRADE vs PRODUCTION-GRADE
+
+This is a Developer Fest demo on a testnet. The following are explicit,
+deliberate gaps — not oversights:
+
+| Area | Demo-grade (this project) | Production-grade would need |
+|---|---|---|
+| Fraud / validity proofs | None. No fraud proofs, no validity (ZK) proofs, no challenge period. A settled batch is final the moment it is mined. | A challenge window with fraud proofs, or validity proofs verified on-chain. |
+| State commitments | Hash commitment over the sorted balance set — NOT a Merkle root. No inclusion proofs exist; verifying one balance requires the whole set. | A Merkle/Verkle tree with per-account inclusion proofs. |
+| Withdrawals | Check the L1 deposit ledger only; no rollup-balance proof. Rollup balances and L1 deposits are never reconciled. | Withdrawals proven against the rollup state root (Merkle proof + nullifier). |
+| Sequencer | Single, centralised, operator-run. No forced inclusion, no rotation, no liveness guarantee. | Decentralised sequencer set or based sequencing, forced inclusion, escape hatch. |
+| Watchtower | Advisory only — prints FAIL lines, cannot halt settlement or slash. Shares `rollup.ts` with the sequencer, so a shared-library bug is invisible to it. | Independent implementation, on-chain fraud-proof submission, bonded challengers. |
+| Batch data | Plaintext published in `deployments/batches/` for verification; the on-chain commitment is to the ciphertext. Transparency chosen over confidentiality. | Real data-availability layer (DA committee, DA chain, or on-chain calldata/blobs) with the plaintext genuinely restricted. |
+| KEM keys | Single key held by the operator; no rotation, no threshold, no forward secrecy. | Rotating keys, threshold decryption, per-batch keys. |
+| User signatures | Rollup transactions are NOT signed by their senders; the sequencer can invent txs from any funded account. | Every rollup tx signed by its sender (ideally PQ-signed). |
+| Deposits | Not auto-credited into rollup balances; the operator seeds `state.json`. | Deposit events credited into the rollup state by the sequencer, verifiable by the watchtower. |
+| Key management | Mode-600 files on the operator's machine. | HSM/KMS, multisig, timelocks, key rotation. |
+
+## 6. What would change the assessment
+
+The single highest-leverage improvement is a fraud-proof challenge period
+with an on-chain dispute path: it turns the watchtower from an alarm bell
+into an enforcement mechanism. The second is user-signed rollup
+transactions, which removes the sequencer's ability to invent transfers.
+The third is a Merkle state commitment with inclusion proofs, which makes
+withdrawals provable against the rollup state instead of the L1 ledger
+alone.
