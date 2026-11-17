@@ -159,7 +159,11 @@ Trust boundaries:
   watchtower replays the whole chain from genesis, so an edited batch file
   fails against the on-chain record (commitment, state root, digest,
   signature, receipt — any of them). A missing batch file is reported as a
-  FAIL and stops the chained verification.
+  FAIL and stops the chained verification. Batch 0's pre-state — the
+  operator-seeded genesis funding — is cross-checked against the chain:
+  the watchtower fails the batch if the seeded funding exceeds the
+  contract's cumulative `totalDeposited`, so the operator cannot invent
+  rollup funds larger than the L1 deposits backing them.
 - **Residual risk:** the files are local and unprotected — there is no
   signed checkpoint or backup. Losing `state.json` loses the rollup's
   balance history (recoverable only by replaying all batch files from

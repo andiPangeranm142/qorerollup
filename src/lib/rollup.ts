@@ -261,6 +261,16 @@ export interface BatchFile {
   balances: Record<string, string>;
   /** Post-batch nonces: address (lowercase) -> nonce. */
   nonces: Record<string, number>;
+  /**
+   * PRE-batch balances/nonces (optional for files written before this
+   * field existed). The watchtower replays from these: batch 0's pre-state
+   * is the operator-seeded genesis funding, which the chained replay from
+   * empty genesis cannot know. Without them the watchtower falls back to
+   * the chained pre-state from the previous batch file.
+   */
+  prevBalances?: Record<string, string>;
+  /** Pre-batch nonces, paired with prevBalances. */
+  prevNonces?: Record<string, number>;
 }
 
 /** One batch as the contract reports it via getBatch. */

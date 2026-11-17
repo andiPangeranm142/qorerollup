@@ -457,6 +457,10 @@ async function settle(args: string[]): Promise<void> {
       [...newBalances.entries()].map(([addr, bal]) => [addr, bal.toString()]),
     ),
     nonces: Object.fromEntries(newNonces.entries()),
+    // Pre-batch state, so the batch file is self-contained for watchtower
+    // replay (batch 0's pre-state is the operator-seeded genesis funding).
+    prevBalances: { ...state.balances },
+    prevNonces: { ...state.nonces },
   };
   writeJson(path.resolve(BATCHES_DIR, `batch-${batchId}.json`), batchFile);
   const newState: RollupState = {

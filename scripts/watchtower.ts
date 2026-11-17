@@ -133,6 +133,24 @@ async function main(): Promise<void> {
     return;
   }
 
+  // On-chain anchor for the genesis-funding check: the rollup balances
+  // seeded before batch 0 cannot exceed what was ever deposited (L1).
+  const totalDepositedWei = (await readContract(client.publicClient, {
+    address: contract,
+    abi,
+    functionName: "totalDeposited",
+  })) as bigint;
+  const totalDepositedUqor = totalDepositedWei / 10n ** 12n;
+  console.log(`totalDeposited on-chain: ${totalDepositedUqor} uqor`);
+
+  /** Canonical JSON for comparing two balance/nonce records. */
+  const canonicalRecord = (record: Record<string, string | number>): string =>
+    JSON.stringify(
+      Object.entries(record)
+        .map(([k, v]) => [k.toLowerCase(), String(v)] as const)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    );
+
   // Chain the pre-batch state through the batch files: batch 0 starts from
   // genesis, each later batch from the previous file's post-state.
   let prevStateRoot: Hex = GENESIS_STATE_ROOT;
@@ -142,18 +160,27 @@ async function main(): Promise<void> {
 
   for (let batchId = 0; batchId < batchCount; batchId++) {
     const batchPath = path.resolve(BATCHES_DIR, `batch-${batchId}.json`);
+    // viem decodes a struct return as an object with NAMED keys only —
+    // tuple-index access ([0], [1], ...) is undefined. (This crashed the
+    // first live run: `lower(undefined)` threw on the first batch.)
     const onChainRaw = (await readContract(client.publicClient, {
       address: contract,
       abi,
       functionName: "getBatch",
       args: [BigInt(batchId)],
-    })) as [Hex, Hex, Hex, bigint, Hex];
+    })) as {
+      stateRoot: Hex;
+      txDataCommitment: Hex;
+      encryptedDataHash: Hex;
+      timestamp: bigint;
+      receiptHash: Hex;
+    };
     const onChain: OnChainBatch = {
-      stateRoot: onChainRaw[0],
-      txDataCommitment: onChainRaw[1],
-      encryptedDataHash: onChainRaw[2],
-      timestamp: onChainRaw[3],
-      receiptHash: onChainRaw[4],
+      stateRoot: onChainRaw.stateRoot,
+      txDataCommitment: onChainRaw.txDataCommitment,
+      encryptedDataHash: onChainRaw.encryptedDataHash,
+      timestamp: onChainRaw.timestamp,
+      receiptHash: onChainRaw.receiptHash,
     };
 
     if (!fs.existsSync(batchPath)) {
@@ -163,21 +190,55 @@ async function main(): Promise<void> {
       break;
     }
     const batch = readJson<BatchFile>(batchPath);
+
+    // Replay pre-state: the batch file's own pre-state when it carries one
+    // (self-contained replay), else the chained pre-state from the previous
+    // file. A file that carries a pre-state must agree with the chain:
+    // batch N's pre-state must equal batch N-1's post-state, and batch 0's
+    // pre-state (the operator-seeded genesis funding) must not exceed the
+    // total ever deposited on-chain.
+    let replayBalances = prevBalances;
+    let replayNonces = prevNonces;
+    const extraFailures: string[] = [];
+    if (batch.prevBalances && batch.prevNonces) {
+      replayBalances = recordsToBalances(batch.prevBalances);
+      replayNonces = recordsToNonces(batch.prevNonces);
+      if (batchId === 0) {
+        const funded = [...replayBalances.values()].reduce((a, b) => a + b, 0n);
+        if (funded > totalDepositedUqor) {
+          extraFailures.push(
+            `genesis funding (${funded} uqor) exceeds total ever deposited on-chain (${totalDepositedUqor} uqor)`,
+          );
+        }
+      } else {
+        const chainedBalances = Object.fromEntries(
+          [...prevBalances.entries()].map(([a, b]) => [a, b.toString()]),
+        );
+        const chainedNonces = Object.fromEntries(prevNonces.entries());
+        if (canonicalRecord(batch.prevBalances) !== canonicalRecord(chainedBalances)) {
+          extraFailures.push("batch file pre-state balances do not match the previous batch's post-state");
+        }
+        if (canonicalRecord(batch.prevNonces) !== canonicalRecord(chainedNonces)) {
+          extraFailures.push("batch file pre-state nonces do not match the previous batch's post-state");
+        }
+      }
+    }
     const result = verifyBatch(batch, onChain, {
       chainId,
       contract,
       batchId,
       sequencerPublicKey,
       prevStateRoot,
-      prevBalances,
-      prevNonces,
+      prevBalances: replayBalances,
+      prevNonces: replayNonces,
       kemSecretKey,
     });
-    if (result.ok) {
+    const failures = [...extraFailures, ...result.failures];
+    if (failures.length === 0) {
       console.log(`batch ${batchId}: OK`);
     } else {
       allOk = false;
-      console.log(`batch ${batchId}: FAIL — ${result.failures.join("; ")}`);
+      console.log(`batch ${batchId}: FAIL — ${failures.join("; ")}`);
     }
 
     // Advance the chained pre-state from this file's post-state; if the file
