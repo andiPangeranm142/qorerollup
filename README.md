@@ -16,7 +16,7 @@ all batches clean — including the deposit credit check.
 - Demo video: [docs/demo.mp4](docs/demo.mp4) (2:48, silent — 4 batches,
   auto-deposit cycle, Merkle-proof withdrawal, reverted attacks,
   watchtower). The YouTube copy
-  (https://www.youtube.com/watch?v=43X_bieF6A0, 2:23) still shows the
+  (https://www.youtube.com/watch?v=b4m2iZkBjIw, 2:23) still shows the
   pre-auto-deposit state and will be replaced on re-upload.
 
 ## Team
