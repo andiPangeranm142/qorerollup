@@ -15,9 +15,8 @@ all batches clean — including the deposit credit check.
 - Demo site: https://andipangeranm142.github.io/qorerollup/
 - Demo video: [docs/demo.mp4](docs/demo.mp4) (2:50, narrated in English — 5 batches,
   three full cycles including a fresh-account cycle, Merkle-proof
-  withdrawal, reverted attacks, watchtower). Also on YouTube
-  (previous 4-batch cut; new upload pending):
-  https://www.youtube.com/watch?v=b4m2iZkBjIw
+  withdrawal, reverted attacks, watchtower). Also on YouTube:
+  https://www.youtube.com/watch?v=3yUJCwdbmR4
 
 ## Team
 
