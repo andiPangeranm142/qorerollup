@@ -308,6 +308,11 @@ export function App() {
   const latest = EVIDENCE.watchtower.latest;
   const okCount = latest.results.filter((r) => r.ok).length;
   const tamper = EVIDENCE.watchtower.tamperDemo;
+  const mw = EVIDENCE.merkleWithdraw;
+  // Independent checks the tampered batch failed (8 in the v2 tamper demo:
+  // file-vs-chain root, replayed root, leaves-recomputed root, all four
+  // leaf proofs, decrypted payload).
+  const tamperFailures = tamper?.results.find((r) => !r.ok)?.failures.length ?? 0;
 
   return (
     <div className="page">
@@ -318,7 +323,8 @@ export function App() {
           A minimal post-quantum rollup: an off-chain sequencer batches transactions, signs each
           batch with ML-DSA-87, and settles it on a contract that verifies the signature on-chain
           via the pqcVerify precompile. Batch payloads are sealed with ML-KEM-1024, withdrawals
-          return funds to Diana, and a watchtower re-verifies every batch.
+          are proven with Merkle proofs against settled state roots — with no sequencer help —
+          and a watchtower re-verifies every batch.
         </p>
         <div className="contract-box" data-testid="contract">
           <span>Settlement contract (chain id {EVIDENCE.chainId})</span>
@@ -391,7 +397,7 @@ export function App() {
       </section>
 
       <section data-testid="full-cycle">
-        <h2>Full cycle — deposit → batches → withdrawal → forged-batch revert</h2>
+        <h2>Full cycle — deposit → batches → Merkle withdrawal → reverted attacks</h2>
         <p>Every step below is a real transaction on the Diana testnet (17 Nov 2026).</p>
         <ol className="cycle">
           <li>
@@ -422,12 +428,53 @@ export function App() {
             · block {EVIDENCE.batches[2].block.toLocaleString("en-US")}
           </li>
           <li>
-            <strong>Withdraw 0.1 QOR</strong> —{" "}
+            <strong>
+              Merkle-proof withdrawal — {uqorToQor(EVIDENCE.cycle.withdraw.amountUqor)} QOR, no
+              sequencer
+            </strong>{" "}
+            — the independent user wallet{" "}
+            {mw?.account ? (
+              <>
+                <a
+                  href={explorerAddress(mw.account)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mono"
+                >
+                  {shorten(mw.account)}
+                </a>{" "}
+              </>
+            ) : null}
+            proved its{" "}
+            {Number(mw?.amountUqor ?? EVIDENCE.cycle.withdraw.amountUqor).toLocaleString("en-US")}{" "}
+            uqor balance against batch #{mw?.batchId ?? "—"}&apos;s state root with a{" "}
+            {mw?.proofSteps ?? "—"}-element Merkle proof and withdrew directly from the contract.{" "}
             <HashLink hash={EVIDENCE.cycle.withdraw.cosmosTx} label={shorten(EVIDENCE.cycle.withdraw.tx)} />{" "}
-            · block {EVIDENCE.cycle.withdraw.block.toLocaleString("en-US")} · withdrawal id{" "}
-            <span className="mono">{shorten(EVIDENCE.cycle.withdraw.withdrawalId)}</span>{" "}
-            (single-use nullifier)
+            · block {EVIDENCE.cycle.withdraw.block.toLocaleString("en-US")}
           </li>
+          {EVIDENCE.cycle.reverts.map((r) => (
+            <li className="revert" key={r.reason}>
+              <strong>
+                {r.reason === "double-withdraw"
+                  ? "Double-withdraw (attack demo) — REVERTED on-chain"
+                  : "Tampered proof (attack demo) — REVERTED on-chain"}
+              </strong>{" "}
+              —{" "}
+              {r.reason === "double-withdraw"
+                ? "the same Merkle-proof withdrawal sent again — the cumulative cap already covers the leaf balance. The contract rejected it"
+                : "a withdrawal with one flipped hex char in the proof — it no longer verifies against the state root. The contract rejected it"}{" "}
+              (<code>{r.error}</code>): receipt status <code>{r.receiptStatus}</code>
+              {r.withdrawnBefore !== null && r.withdrawnAfter !== null && (
+                <>
+                  , cumulative withdrawnAmount stayed at{" "}
+                  {Number(r.withdrawnAfter).toLocaleString("en-US")} uqor
+                </>
+              )}
+              .{" "}
+              <HashLink hash={r.cosmosTx} label={shorten(r.tx)} /> · block{" "}
+              {r.block.toLocaleString("en-US")}
+            </li>
+          ))}
           <li className="revert">
             <strong>Forged batch — REVERTED on-chain</strong> — a genuine ML-DSA-87 signature over
             the WRONG digest, submitted by the sequencer itself. The contract rejected it (
@@ -477,9 +524,11 @@ export function App() {
         {EVIDENCE.merkleWithdraw ? (
           <>
             <p>
-              The user withdraws with a Merkle proof against a settled batch&apos;s state root —
-              no sequencer help needed. The contract verifies the proof against the on-chain
-              state root and releases the funds.
+              The user withdraws by presenting a Merkle proof for their balance leaf against a
+              settled batch&apos;s state root — directly to the contract, with no sequencer
+              involvement. The sequencer cannot block a withdrawal: the proof is verified
+              on-chain against the settled root, and a cumulative per-account cap means the
+              same leaf can never pay out twice.
             </p>
             <dl className="merkle-details">
               {EVIDENCE.merkleWithdraw.batchId !== null && (
@@ -509,12 +558,53 @@ export function App() {
                   </dd>
                 </div>
               )}
-              {EVIDENCE.merkleWithdraw.withdrawalId && (
+              {EVIDENCE.merkleWithdraw.account && (
                 <div>
-                  <dt>Withdrawal id (nullifier)</dt>
-                  <dd className="mono">{EVIDENCE.merkleWithdraw.withdrawalId}</dd>
+                  <dt>Withdrawing account</dt>
+                  <dd>
+                    <a
+                      href={explorerAddress(EVIDENCE.merkleWithdraw.account)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mono"
+                    >
+                      {EVIDENCE.merkleWithdraw.account}
+                    </a>{" "}
+                    (independent user wallet — not the sequencer)
+                  </dd>
                 </div>
               )}
+              {EVIDENCE.merkleWithdraw.leaf && (
+                <div>
+                  <dt>Merkle leaf</dt>
+                  <dd className="mono">{EVIDENCE.merkleWithdraw.leaf}</dd>
+                </div>
+              )}
+              {EVIDENCE.merkleWithdraw.proof && (
+                <div>
+                  <dt>Proof elements</dt>
+                  <dd>
+                    <ol className="proof-list">
+                      {EVIDENCE.merkleWithdraw.proof.map((p) => (
+                        <li key={p} className="mono">
+                          {p}
+                        </li>
+                      ))}
+                    </ol>
+                  </dd>
+                </div>
+              )}
+              {EVIDENCE.merkleWithdraw.withdrawnBefore !== null &&
+                EVIDENCE.merkleWithdraw.withdrawnAfter !== null && (
+                  <div>
+                    <dt>Cumulative withdrawn cap</dt>
+                    <dd>
+                      {Number(EVIDENCE.merkleWithdraw.withdrawnBefore).toLocaleString("en-US")} →{" "}
+                      {Number(EVIDENCE.merkleWithdraw.withdrawnAfter).toLocaleString("en-US")}{" "}
+                      uqor — the same leaf can never pay out twice
+                    </dd>
+                  </div>
+                )}
               {EVIDENCE.merkleWithdraw.tx && EVIDENCE.merkleWithdraw.cosmosTx && (
                 <div>
                   <dt>Withdrawal tx</dt>
@@ -592,7 +682,7 @@ export function App() {
               ))}
             </ul>
             <p>
-              The watchtower failed the tampered batch on three independent checks and failed the
+              The watchtower failed the tampered batch on {tamperFailures} independent checks and failed the
               next batch on the broken state-root chain. Restoring the file returned ALL BATCHES
               OK. Run log:{" "}
               <a
@@ -609,8 +699,8 @@ export function App() {
 
       <footer>
         <p>
-          <strong>Honest limits:</strong> single sequencer, no fraud proofs, no inclusion proofs
-          (state root is a hash commitment, not a Merkle root), demo-grade — see{" "}
+          <strong>Honest limits:</strong> single sequencer, no fraud proofs, operator-seeded
+          genesis funding, demo-grade — see{" "}
           <a href={`${GITHUB_REPO}/blob/main/THREAT_MODEL.md`} target="_blank" rel="noreferrer">
             THREAT_MODEL.md ↗
           </a>

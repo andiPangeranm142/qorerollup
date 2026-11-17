@@ -42,15 +42,31 @@ export type WatchtowerResult = {
 export type MerkleWithdrawEvidence = {
   at: string | null;
   batchId: number | null;
+  account: string | null;
   stateRoot: string | null;
   leaf: string | null;
+  proof: string[] | null;
   proofSteps: number | null;
   amountUqor: string | null;
-  withdrawalId: string | null;
+  withdrawnBefore: string | null;
+  withdrawnAfter: string | null;
   tx: string | null;
   cosmosTx: string | null;
   block: number | null;
   note: string | null;
+};
+
+export type RevertEvidence = {
+  at: string;
+  reason: string;
+  error: string;
+  batchId: number;
+  tx: string;
+  cosmosTx: string;
+  block: number;
+  receiptStatus: string;
+  withdrawnBefore: string | null;
+  withdrawnAfter: string | null;
 };
 
 export type Evidence = {
@@ -80,11 +96,12 @@ export type Evidence = {
     withdraw: {
       at: string;
       amountUqor: string;
-      withdrawalId: string;
+      leaf: string | null;
       tx: string;
       cosmosTx: string;
       block: number;
     };
+    reverts: RevertEvidence[];
     forged: {
       at: string;
       batchId: number;
@@ -255,11 +272,37 @@ export const EVIDENCE: Evidence = {
     "withdraw": {
       "at": "2026-11-17T10:34:18.867Z",
       "amountUqor": "50000",
-      "withdrawalId": "0x7bcddcd273781c0e86e8c2ce5c0b4d70fc3a9ef1f98209c4a41a7ee6dc731e2a",
+      "leaf": "0x7bcddcd273781c0e86e8c2ce5c0b4d70fc3a9ef1f98209c4a41a7ee6dc731e2a",
       "tx": "0xaa57f3b235d317dc8d2caf2f2444ff0b27822145042490484dbda2bc8c33fc14",
       "cosmosTx": "681E9D192A38ABB9D3F13DD1091015C07C01DB7B863E3295D825D032EF4591DD",
       "block": 10250197
     },
+    "reverts": [
+      {
+        "at": "2026-11-17T10:34:27.000Z",
+        "reason": "double-withdraw",
+        "error": "ZeroWithdraw",
+        "batchId": 2,
+        "tx": "0x1da16ddeeea2b9fa5f456911b36ed615b20b7b551491f2a94b81a532b177a86d",
+        "cosmosTx": "439BF165BDF6A751DEBBC6F94F41ED2F633E9EC77931DB72DAB8F477796E8628",
+        "block": 10250203,
+        "receiptStatus": "reverted",
+        "withdrawnBefore": "50000",
+        "withdrawnAfter": "50000"
+      },
+      {
+        "at": "2026-11-17T10:34:35.340Z",
+        "reason": "tampered-proof",
+        "error": "InvalidMerkleProof",
+        "batchId": 2,
+        "tx": "0x35715e361b5289e5d4259ea705a56f58c07f1d993323efce8eb946551a076519",
+        "cosmosTx": "E4B4E3900E0123259C53CD711C026B209ACD09AA743AAA0F28409D2D3EDFC7ED",
+        "block": 10250208,
+        "receiptStatus": "reverted",
+        "withdrawnBefore": "50000",
+        "withdrawnAfter": "50000"
+      }
+    ],
     "forged": {
       "at": "2026-11-17T10:34:48.832Z",
       "batchId": 3,
@@ -274,7 +317,7 @@ export const EVIDENCE: Evidence = {
   },
   "watchtower": {
     "latest": {
-      "at": "2026-11-17T10:35:22.924Z",
+      "at": "2026-11-17T10:39:59.556Z",
       "allOk": true,
       "batchCount": 3,
       "decryptCheck": "enabled",
@@ -337,11 +380,18 @@ export const EVIDENCE: Evidence = {
   "merkleWithdraw": {
     "at": "2026-11-17T10:34:18.869Z",
     "batchId": 2,
+    "account": "0x29cb5ABD4309b5A83A6A66e95CbdA1d88F060d4F",
     "stateRoot": "0x0098795f556cd7dd0034c5b374c4a1c7c9b0984bbc31d08aeb1c74b1bcd152ff",
     "leaf": "0x7bcddcd273781c0e86e8c2ce5c0b4d70fc3a9ef1f98209c4a41a7ee6dc731e2a",
+    "proof": [
+      "0x1c1a6df03be0534d8a018f4d0109711615e9f114546669b33649b007c3837d46",
+      "0xcd7079ed2a92e27149c136dfdb1d81a291ce04f2db79ed0339ff302e023b897a",
+      "0x4f9f8d354ffd02607dd8c0c6a5fff144a373f2e5588b32d50185af80f07bcb90"
+    ],
     "proofSteps": 3,
     "amountUqor": "50000",
-    "withdrawalId": null,
+    "withdrawnBefore": "0",
+    "withdrawnAfter": "50000",
     "tx": "0xaa57f3b235d317dc8d2caf2f2444ff0b27822145042490484dbda2bc8c33fc14",
     "cosmosTx": "681E9D192A38ABB9D3F13DD1091015C07C01DB7B863E3295D825D032EF4591DD",
     "block": 10250197,

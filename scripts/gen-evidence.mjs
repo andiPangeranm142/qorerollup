@@ -36,6 +36,25 @@ const deposit = step("deposit");
 const withdraw = step("withdraw") ?? step("merkle-withdraw");
 const forged = step("forged-batch");
 const seed = step("seed-state");
+// On-chain reverted withdrawal attacks (v2): the same Merkle-proof
+// withdrawal sent twice (ZeroWithdraw) and a withdrawal with one flipped
+// hex char in the proof (InvalidMerkleProof). Error names are the
+// contract's revert reasons (see README Live usage table).
+const REVERT_ERROR = { "double-withdraw": "ZeroWithdraw", "tampered-proof": "InvalidMerkleProof" };
+const reverts = usage.steps
+  .filter((s) => s.command === "merkle-withdraw-revert")
+  .map((s) => ({
+    at: s.at,
+    reason: s.reason,
+    error: REVERT_ERROR[s.reason] ?? "reverted",
+    batchId: s.batchId,
+    tx: s.tx,
+    cosmosTx: s.cosmosTx,
+    block: s.block,
+    receiptStatus: s.receiptStatus,
+    withdrawnBefore: s.withdrawnAmountBefore ?? null,
+    withdrawnAfter: s.withdrawnAmountAfter ?? null,
+  }));
 
 // Byte length of a 0x-prefixed hex string.
 const hexBytes = (h) => (h.startsWith("0x") ? (h.length - 2) / 2 : h.length / 2);
@@ -84,11 +103,17 @@ try {
   merkleWithdraw = {
     at: mw.at ?? null,
     batchId: mw.batchId ?? null,
+    // v2 has NO withdrawalId/nullifier: withdrawals are capped
+    // cumulatively per account (withdrawnAmount), so the same leaf can
+    // never pay out twice.
+    account: mw.account ?? null,
     stateRoot: mw.stateRoot ?? null,
     leaf: mw.leaf ?? null,
+    proof: Array.isArray(mw.proof) ? mw.proof : null,
     proofSteps: Array.isArray(mw.proof) ? mw.proof.length : (mw.proofSteps ?? null),
     amountUqor: mw.amountUqor ?? null,
-    withdrawalId: mw.withdrawalId ?? null,
+    withdrawnBefore: mw.withdrawnBefore ?? null,
+    withdrawnAfter: mw.withdrawnAfter ?? null,
     tx: mw.tx ?? null,
     cosmosTx: mw.cosmosTx ?? null,
     block: mw.block ?? null,
@@ -102,11 +127,14 @@ try {
     merkleWithdraw = {
       at: mwStep.at ?? null,
       batchId: mwStep.batchId ?? null,
+      account: mwStep.account ?? null,
       stateRoot: mwStep.stateRoot ?? null,
       leaf: mwStep.leaf ?? null,
+      proof: Array.isArray(mwStep.proof) ? mwStep.proof : null,
       proofSteps: Array.isArray(mwStep.proof) ? mwStep.proof.length : (mwStep.proofSteps ?? null),
       amountUqor: mwStep.amountUqor ?? null,
-      withdrawalId: mwStep.withdrawalId ?? null,
+      withdrawnBefore: mwStep.withdrawnBefore ?? null,
+      withdrawnAfter: mwStep.withdrawnAfter ?? null,
       tx: mwStep.tx ?? null,
       cosmosTx: mwStep.cosmosTx ?? null,
       block: mwStep.block ?? null,
@@ -162,17 +190,16 @@ const evidence = {
     withdraw: {
       at: withdraw.at,
       amountUqor: withdraw.amountUqor,
-      // v1: the single-use nullifier. v2 has NO nullifier — Merkle-proof
-      // withdrawals are capped cumulatively instead — so this field
-      // carries the withdrawn leaf hash (the identifier of what was
-      // withdrawn). The demo UI should use `merkleWithdraw` for the v2
-      // display; this keeps the v1-shaped `cycle.withdraw` block (and
-      // its `string` type) working until the UI is rewritten for v2.
-      withdrawalId: withdraw.withdrawalId ?? withdraw.leaf,
+      // v2: the withdrawn leaf hash (keccak256(account, balance, nonce)).
+      // There is NO nullifier in v2 — withdrawals are capped cumulatively
+      // per account instead. The demo UI uses `merkleWithdraw` for the
+      // full v2 display; this block keeps the cycle step working.
+      leaf: withdraw.leaf ?? withdraw.withdrawalId ?? null,
       tx: withdraw.tx,
       cosmosTx: withdraw.cosmosTx,
       block: withdraw.block,
     },
+    reverts,
     forged: {
       at: forged.at,
       batchId: forged.batchId,
@@ -259,15 +286,31 @@ export type WatchtowerResult = {
 export type MerkleWithdrawEvidence = {
   at: string | null;
   batchId: number | null;
+  account: string | null;
   stateRoot: string | null;
   leaf: string | null;
+  proof: string[] | null;
   proofSteps: number | null;
   amountUqor: string | null;
-  withdrawalId: string | null;
+  withdrawnBefore: string | null;
+  withdrawnAfter: string | null;
   tx: string | null;
   cosmosTx: string | null;
   block: number | null;
   note: string | null;
+};
+
+export type RevertEvidence = {
+  at: string;
+  reason: string;
+  error: string;
+  batchId: number;
+  tx: string;
+  cosmosTx: string;
+  block: number;
+  receiptStatus: string;
+  withdrawnBefore: string | null;
+  withdrawnAfter: string | null;
 };
 
 export type Evidence = {
@@ -297,11 +340,12 @@ export type Evidence = {
     withdraw: {
       at: string;
       amountUqor: string;
-      withdrawalId: string;
+      leaf: string | null;
       tx: string;
       cosmosTx: string;
       block: number;
     };
+    reverts: RevertEvidence[];
     forged: {
       at: string;
       batchId: number;

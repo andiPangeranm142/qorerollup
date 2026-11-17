@@ -132,6 +132,9 @@ table.balances tr.total td { font-weight: 700; }
 .merkle-details dt { color: var(--muted); font-size: 0.9rem; }
 .merkle-details dd { margin: 0; font-size: 0.9rem; }
 
+.proof-list { margin: 0; padding-left: 1.1rem; }
+.proof-list li { margin-bottom: 0.25rem; font-size: 0.82rem; }
+
 footer { border-top: 1px solid var(--border); padding-top: 1.5rem; color: var(--muted); }
 footer strong { color: var(--text); }
 

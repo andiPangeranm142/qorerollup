@@ -10,8 +10,8 @@ proof and no sequencer help, double-withdraw and tampered-proof attacks
 reverted on-chain, and the watchtower verifies all batches clean.
 
 - Project page: https://build.qorechain.io/p/qorerollup
-- Demo site: in progress (GitHub Pages)
-- Demo video: in progress (≤3 min, silent)
+- Demo site: https://andipangeranm142.github.io/qorerollup/
+- Demo video: docs/demo.mp4 (2:23, silent)
 
 ## Team
 
