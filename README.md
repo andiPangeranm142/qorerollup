@@ -139,19 +139,26 @@ Full step log with hashes: [deployments/usage.json](deployments/usage.json).
 Per-batch detail (txs, state roots, leaves, proofs, signatures,
 ciphertexts): [deployments/batches/](deployments/batches/).
 
-| Step | Detail | EVM tx | Block |
-| --- | --- | --- | --- |
-| Deposit | 0.3 QOR into the rollup | `0x0a39abcbd8307280e19f3e035bbbde29a36804b865da95f74d6fac4dd73ee2a5` | 10250139 |
-| Batch #0 | 1 tx: deployer → user wallet, 50,000 uqor (2 leaves) | `0x192d42f9ce32dad3e16dd031bcd8e52b8de03edffbb1f8b3ab7f9373d1774382` | 10250155 |
-| Batch #1 | 2 txs: deployer → `0x1111…1111` 25,000; `0x1111…1111` → `0x2222…2222` 10,000 uqor (4 leaves) | `0x2604ab6a838cc66c8c0b22f8198aa8fa630333b93616287c016d97e37abfa5ef` | 10250169 |
-| Batch #2 | 1 tx: deployer → `0x3333…3333`, 15,000 uqor (5 leaves) | `0xf6ff9ad564f9c2214203a49f3c3747414b554fc61fa4e46d7b000f0d40c412a0` | 10250179 |
-| **Merkle withdrawal** | **User wallet withdraws 0.05 QOR with a 3-element Merkle proof against batch #2 — no sequencer involvement** | `0xaa57f3b235d317dc8d2caf2f2444ff0b27822145042490484dbda2bc8c33fc14` | 10250197 |
-| **Double-withdraw (attack demo)** | Same Merkle-proof withdrawal sent again — **REVERTED on-chain** (`ZeroWithdraw`), cumulative cap unchanged | `0x1da16ddeeea2b9fa5f456911b36ed615b20b7b551491f2a94b81a532b177a86d` | 10250203 |
-| **Tampered-proof (attack demo)** | Withdrawal with one flipped hex char in the proof — **REVERTED on-chain** (`InvalidMerkleProof`) | `0x35715e361b5289e5d4259ea705a56f58c07f1d993323efce8eb946551a076519` | 10250208 |
-| **Forged batch (attack demo)** | Genuine ML-DSA-87 signature over the WRONG digest, submitted by the sequencer itself — **REVERTED on-chain** (`InvalidBatchSignature`), `batchCount` unchanged | `0x2fbb8444db842c419b180dc5b34b64b4b636b2c4b1199faedc025558f6d206f3` | 10250217 |
-| Deposit (auto-credit cycle) | 0.1 QOR into the rollup — picked up by the deposit watcher and credited by batch #3 | `0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e` | 10252674 |
-| Batch #3 | 1 deposit (100,000 uqor, auto-credited) + 1 tx: deployer → user wallet, 10,000 uqor (5 leaves) | `0xb0d9842996e735efe3d842fae71309625bd75ceab8c61628224c0f12e560391c` | 10252704 |
-| **Merkle withdrawal (auto-credit cycle)** | **Deployer withdraws 0.3 QOR with a 3-element Merkle proof against batch #3 — its full leaf balance, which includes the auto-credited 0.1 QOR deposit; no sequencer involvement** | `0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91` | 10253087 |
+| Step | Detail | EVM tx | Cosmos tx (explorer) | Block | Status |
+| --- | --- | --- | --- | --- | --- |
+| Deploy | Settlement contract v2 deployed (3,877 bytes) | `0x9f8032e00d66000ff427868c9c57a27ee006d769d1c797b5936457c280022cd0` | [`5DFEEF53AEFBD5F23FA3DA9DC6F47D7168B5A91DEB75843211CA4470E4713510`](https://explore.qore.network/tx/5DFEEF53AEFBD5F23FA3DA9DC6F47D7168B5A91DEB75843211CA4470E4713510) | 10250134 | Success |
+| Deposit | 0.3 QOR into the rollup (genesis deposit, hand-credited before batch #0) | `0x0a39abcbd8307280e19f3e035bbbde29a36804b865da95f74d6fac4dd73ee2a5` | [`2BA3C0DEEE93538EBE431F378F5DD90BD90DF594CBC87F75182D800AED71B6CE`](https://explore.qore.network/tx/2BA3C0DEEE93538EBE431F378F5DD90BD90DF594CBC87F75182D800AED71B6CE) | 10250139 | Success |
+| Batch #0 | 1 tx: deployer → user wallet, 50,000 uqor (2 leaves) | `0x192d42f9ce32dad3e16dd031bcd8e52b8de03edffbb1f8b3ab7f9373d1774382` | [`796B8BEDE0AD1958AD93E708A14FFEFF601FF0330DE25A312FD7390E57C23CDF`](https://explore.qore.network/tx/796B8BEDE0AD1958AD93E708A14FFEFF601FF0330DE25A312FD7390E57C23CDF) | 10250155 | Success |
+| Batch #1 | 2 txs: deployer → `0x1111…1111` 25,000; `0x1111…1111` → `0x2222…2222` 10,000 uqor (4 leaves) | `0x2604ab6a838cc66c8c0b22f8198aa8fa630333b93616287c016d97e37abfa5ef` | [`C380154DF477DA64A7C985DBEF991A09E3AB25478E171DD43252FC6E54993998`](https://explore.qore.network/tx/C380154DF477DA64A7C985DBEF991A09E3AB25478E171DD43252FC6E54993998) | 10250169 | Success |
+| Batch #2 | 1 tx: deployer → `0x3333…3333`, 15,000 uqor (5 leaves) | `0xf6ff9ad564f9c2214203a49f3c3747414b554fc61fa4e46d7b000f0d40c412a0` | [`F19BC134228AF2E3EE9BB0B90E4CEA90DE7C74E95A250DB62802EEC9FF7E9FB6`](https://explore.qore.network/tx/F19BC134228AF2E3EE9BB0B90E4CEA90DE7C74E95A250DB62802EEC9FF7E9FB6) | 10250179 | Success |
+| **Merkle withdrawal** | **User wallet withdraws 0.05 QOR with a 3-element Merkle proof against batch #2 — no sequencer involvement** | `0xaa57f3b235d317dc8d2caf2f2444ff0b27822145042490484dbda2bc8c33fc14` | [`681E9D192A38ABB9D3F13DD1091015C07C01DB7B863E3295D825D032EF4591DD`](https://explore.qore.network/tx/681E9D192A38ABB9D3F13DD1091015C07C01DB7B863E3295D825D032EF4591DD) | 10250197 | Success |
+| **Double-withdraw (attack demo)** | Same Merkle-proof withdrawal sent again — **REVERTED on-chain** (`ZeroWithdraw`), cumulative cap unchanged | `0x1da16ddeeea2b9fa5f456911b36ed615b20b7b551491f2a94b81a532b177a86d` | [`439BF165BDF6A751DEBBC6F94F41ED2F633E9EC77931DB72DAB8F477796E8628`](https://explore.qore.network/tx/439BF165BDF6A751DEBBC6F94F41ED2F633E9EC77931DB72DAB8F477796E8628) | 10250203 | **Reverted** |
+| **Tampered-proof (attack demo)** | Withdrawal with one flipped hex char in the proof — **REVERTED on-chain** (`InvalidMerkleProof`) | `0x35715e361b5289e5d4259ea705a56f58c07f1d993323efce8eb946551a076519` | [`E4B4E3900E0123259C53CD711C026B209ACD09AA743AAA0F28409D2D3EDFC7ED`](https://explore.qore.network/tx/E4B4E3900E0123259C53CD711C026B209ACD09AA743AAA0F28409D2D3EDFC7ED) | 10250208 | **Reverted** |
+| **Forged batch (attack demo)** | Genuine ML-DSA-87 signature over the WRONG digest, submitted by the sequencer itself — **REVERTED on-chain** (`InvalidBatchSignature`), `batchCount` unchanged | `0x2fbb8444db842c419b180dc5b34b64b4b636b2c4b1199faedc025558f6d206f3` | [`4601E15374FF6AD15B3458466549EA9E370E74B82ED2BE10F291C15E8DE52141`](https://explore.qore.network/tx/4601E15374FF6AD15B3458466549EA9E370E74B82ED2BE10F291C15E8DE52141) | 10250217 | **Reverted** |
+| Deposit (auto-credit cycle) | 0.1 QOR into the rollup — picked up by the deposit watcher and credited by batch #3 | `0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e` | [`D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9`](https://explore.qore.network/tx/D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9) | 10252674 | Success |
+| Batch #3 | 1 deposit (100,000 uqor, auto-credited) + 1 tx: deployer → user wallet, 10,000 uqor (5 leaves) | `0xb0d9842996e735efe3d842fae71309625bd75ceab8c61628224c0f12e560391c` | [`E0E7F28A654A162FA5822356C25FD3639A24775367A7E928A12C256508EFA818`](https://explore.qore.network/tx/E0E7F28A654A162FA5822356C25FD3639A24775367A7E928A12C256508EFA818) | 10252704 | Success |
+| **Merkle withdrawal (auto-credit cycle)** | **Deployer withdraws 0.3 QOR with a 3-element Merkle proof against batch #3 — its full leaf balance, which includes the auto-credited 0.1 QOR deposit; no sequencer involvement** | `0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91` | [`B11F3986401D66598A1DF23CCEF90E7FA807A385C3D2F406AC96F8DA626640FB`](https://explore.qore.network/tx/B11F3986401D66598A1DF23CCEF90E7FA807A385C3D2F406AC96F8DA626640FB) | 10253087 | Success |
+
+Every transaction above has two hash forms: the EVM hash (as returned
+by the RPC) and the Cosmos/native hash (as shown by the explorer — the
+explorer links use it). The same hashes are recorded in
+[deployments/usage.json](deployments/usage.json) and
+[deployments/testnet.json](deployments/testnet.json).
 
 Final on-chain state (verified by independent read): `batchCount` 4,
 `totalDeposited` 0.4 QOR, `totalWithdrawn` 0.35 QOR,
@@ -192,7 +199,53 @@ crediting it. The watchtower re-checks every credit after settlement
 (see [THREAT_MODEL.md](THREAT_MODEL.md) §4.13): a credit larger than
 its supporting L1 deposit fails the run.
 
+## How to verify yourself
+
+Nothing in the table above needs to be taken on trust — every claim
+can be checked independently:
+
+1. **Check the transactions on the explorer.** Open
+   https://explore.qore.network and **switch to Testnet first** — the
+   explorer defaults to Mainnet, and none of these transactions will
+   show up until you switch. Then paste any Cosmos hash from the
+   table into the search box (or click its link): you will see the
+   transaction, its block number, and whether it succeeded or
+   reverted. The three attack demos (double-withdraw, tampered
+   proof, forged batch) show as failed transactions at blocks
+   10250203, 10250208 and 10250217.
+2. **Check the contract state.** Open the settlement contract
+   `0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708` on the explorer
+   (Testnet): `batchCount` 4, `totalDeposited` 0.4 QOR,
+   `totalWithdrawn` 0.35 QOR, contract balance 0.05 QOR.
+3. **Re-run the tests.** `npm install && npm test` — 150 tests pass
+   (Hardhat; the contract tests run against mock precompiles, the
+   off-chain tests use real ML-DSA-87 and ML-KEM-1024 crypto).
+4. **Re-run the watchtower.** `npm run watchtower` re-verifies all 4
+   settled batches against the on-chain records — signatures, state
+   replay, Merkle trees and proofs, receipts, decrypt check, and the
+   deposit credit checks — and prints ALL BATCHES OK. It needs only
+   a Diana RPC endpoint (defaults to `https://evm-testnet.qore.host`);
+   no keys are required. Every run is appended to
+   [deployments/watchtower-log.json](deployments/watchtower-log.json).
+
 ## How it works
+
+```mermaid
+flowchart LR
+    User[User] -->|deposit QOR| Contract[Settlement contract<br/>Diana testnet, chain id 9800]
+    Contract -->|Deposited events| Watcher[Deposit watcher<br/>npm run deposit-watcher]
+    Watcher -->|pending deposits| Seq[Sequencer<br/>off-chain]
+    User -->|rollup txs| Mempool[Mempool]
+    Mempool --> Seq
+    Seq -->|ML-DSA-87-signed batch| Contract
+    Contract -->|pqcVerify + Merkle state root| Receipt[Verified settlement receipt]
+    User -->|Merkle proof — no sequencer help| Withdraw[withdraw]
+    Withdraw --> Contract
+    Tower[Watchtower<br/>npm run watchtower] -->|re-verifies every batch| Contract
+    Tower -->|checks credits vs Deposited logs| Watcher
+```
+
+In more detail:
 
 ```
 L1 deposits ──► deposit watcher (npm run deposit-watcher) reads
