@@ -11,7 +11,7 @@ reverted on-chain, and the watchtower verifies all batches clean.
 
 - Project page: https://build.qorechain.io/p/qorerollup
 - Demo site: https://andipangeranm142.github.io/qorerollup/
-- Demo video: docs/demo.mp4 (2:23, silent)
+- Demo video: https://cdn.jsdelivr.net/gh/andiPangeranm142/qorerollup@1cddb048f60c1156859ffe631f498d5ba065f012/docs/demo.mp4 (2:23, silent; also at docs/demo.mp4)
 
 ## Team
 
@@ -80,6 +80,7 @@ settles them on the QoreChain Diana testnet with post-quantum security:
 
 - **Settlement contract (v2):** `0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708`
   ([explorer](https://explore.qore.network/address/0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708) — switch to Testnet)
+  Native form (for the project page testnet field): `qor1k49gh5kll75l8w9z8sa5ue3luvtx04cg75dhf9`
 - **Deployer = sequencer:** `0x0140a056ee37D5240b0397eCdF1347Da80E33b9f`
   (`qor1q9q2q4hwxl2jgzcrjlkd7y68m2qwxwul0nheda`)
 - **Demo user wallet** (independent of the sequencer):
