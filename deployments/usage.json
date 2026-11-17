@@ -15,7 +15,7 @@
     {
       "at": "2026-11-17T10:32:59.757Z",
       "command": "seed-state",
-      "note": "Operator-seeded genesis rollup funding: deployer credited 300000 uqor in deployments/state.json, backed by the 0.3 QOR L1 deposit (see deposit step). L1 deposits are NOT auto-credited (documented demo gap).",
+      "note": "Operator-seeded genesis rollup funding: deployer credited 300000 uqor in deployments/state.json, backed by the 0.3 QOR L1 deposit (see deposit step). L1 deposits are NOT auto-credited (documented demo gap). [Correction 17 Nov 2026: deposits ARE auto-credited since the deposit watcher landed — see the auto-credit cycle steps (0.1 QOR deposit → batch #3). The genesis deposit remains the one hand-credited exception, recorded in deployments/deposits.json with status \"genesis\".]",
       "account": "0x0140a056ee37d5240b0397ecdf1347da80e33b9f",
       "amountUqor": "300000"
     },
