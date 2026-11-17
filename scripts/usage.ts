@@ -154,6 +154,7 @@ async function main(): Promise<void> {
     console.log(`  block: ${receipt.blockNumber}`);
     appendUsageStep(contract, {
       command: "deposit",
+      account: account.address,
       amountUqor: amountUqor.toString(),
       tx: hash,
       cosmosTx: cosmos.cosmosHash,

@@ -30,6 +30,17 @@ owns the result.
   gained leaves + proofs, and the watchtower gained Merkle verification
   — replacing the v1 contract, whose history is archived in
   `deployments/v1/`.
+- Automatic deposit ingestion (17 Nov 2026): the deposit watcher
+  (`scripts/deposit-watcher.ts` + the pure logic in
+  `src/lib/deposits.ts`), the sequencer rewire that applies pending
+  deposits into each batch's state transition (with a pre-settle
+  re-verification of every pending deposit against the on-chain logs),
+  the watchtower's deposit credit checks (every credit matched
+  against the `Deposited` logs; credited totals checked against
+  `totalDeposited` in aggregate and per depositor), and the
+  deposit-watcher + deposit-credit test suites (including the
+  negative cases: a fake credit and a credit exceeding its
+  supporting deposit fail at both levels).
 
 The design follows the patterns of the team's earlier QoreChain projects
 (Quantum Vault, SealedBid): the ML-DSA-87 signing flow, the EVM window
@@ -53,6 +64,12 @@ repo was fabricated:
   chain, not from a local file).
 - The KEM public key in `deployments/kem-public-key.json` is the real
   public key whose secret counterpart sealed the batch payloads.
+- The auto-deposit cycle is real testnet activity too: a 0.1 QOR
+  deposit (EVM tx `0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e`)
+  was picked up by the deposit watcher, credited by batch #3
+  (`0xb0d9842996e735efe3d842fae71309625bd75ceab8c61628224c0f12e560391c`),
+  and the deployer withdrew 0.3 QOR against batch #3 with a Merkle
+  proof (`0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91`).
 
 Anyone can re-verify the evidence: the batch files contain everything
 needed to recompute the commitments, replay the state transitions, and
@@ -79,6 +96,9 @@ sequencer, batch plaintext published alongside the ciphertext for
 verification, and withdrawals that depend on published batch data to
 construct a proof. (Two v1 gaps are closed in v2: the state root is now
 a Merkle root with inclusion proofs, and withdrawals are proven against
-the rollup state instead of the L1 deposit ledger alone.) The AI wrote
+the rollup state instead of the L1 deposit ledger alone. A third gap
+closed after v2: L1 deposits are now auto-credited by the deposit
+watcher instead of hand-seeded — the one hand-credited exception is
+the 0.3 QOR genesis deposit, recorded as such.) The AI wrote
 those sections itself and stands by them — they are the reason this
 entry is presented as a demo, not a production rollup.

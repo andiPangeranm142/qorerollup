@@ -7,15 +7,19 @@
  *   npm run merkle-withdraw -- --batch <id> --expect-revert
  *   npm run merkle-withdraw -- --batch <id> --tamper-proof --expect-revert
  *
- * The caller is the account in ../.env.user (QORE_MNEMONIC +
- * QORE_EVM_PRIVATE_KEY) — an INDEPENDENT user wallet, not the sequencer.
+ * The caller is the account in the loaded env file (QORE_MNEMONIC +
+ * QORE_EVM_PRIVATE_KEY) — normally ../.env.user, an INDEPENDENT user
+ * wallet, not the sequencer (npm run merkle-withdraw loads that file).
  * The script loads deployments/batches/batch-<id>.json, finds the
  * caller's leaf, builds the Merkle proof from the batch file, and calls
  * QoreRollup.withdraw(batchId, account, balance, nonce, proof) directly
  * on the contract. No sequencer call exists anywhere in this path: the
- * user needs only the published batch file and a live EVM window of
+ * caller needs only the published batch file and a live EVM window of
  * their own (register the key + open the window with
- * `npx tsx --env-file=../.env.user scripts/window.ts register|open`).
+ * `npx tsx --env-file=../.env.user scripts/window.ts register|open`,
+ * or ../.env for the deployer account). The deployer withdrawal
+ * against batch #3 ran with ../.env; the user withdrawal against
+ * batch #2 ran with ../.env.user.
  *
  * --dry-run verifies the proof locally (against the batch file's root
  * and the on-chain root) and simulates the call, then stops.
@@ -361,7 +365,7 @@ async function main(): Promise<void> {
   }
   const step = {
     command: "merkle-withdraw",
-    note: "Independent user wallet withdrawing with a Merkle proof against a settled batch state root — no sequencer involvement.",
+    note: "Merkle-proof withdrawal against a settled batch state root — no sequencer involvement.",
     batchId,
     account: account.address,
     balanceUqor: balance.toString(),

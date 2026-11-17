@@ -164,6 +164,12 @@ Trust boundaries:
   was included and REVERTED (`InvalidMerkleProof`, EVM tx
   `0x35715e361b5289e5d4259ea705a56f58c07f1d993323efce8eb946551a076519`,
   block 10250208); `withdrawnAmount` stayed 50,000 uqor through both.
+  A second withdrawal closed the auto-deposit cycle the same day:
+  the deployer withdrew 300,000 uqor (0.3 QOR) against batch #3 with
+  a 3-element Merkle proof (EVM tx
+  `0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91`,
+  block 10253087) — its full leaf balance, which includes the
+  auto-credited 0.1 QOR deposit (see §4.13).
   Reproduce with `npm run merkle-withdraw -- --batch 2 --expect-revert`
   (and `--tamper-proof`). The same rejections are covered in the
   Hardhat tests (wrong proof, wrong balance/nonce, wrong sender,
@@ -174,10 +180,14 @@ Trust boundaries:
   NOT burn rollup balances and do NOT consult the L1 `deposits`
   ledger — the contract pays out of its balance against the proven
   rollup balance, so the rollup balance set and the L1 deposit ledger
-  are still two books that are never reconciled on-chain (the
-  watchtower cross-checks the seeded funding against cumulative
-  `totalDeposited` off-chain). A user whose leaf is in a batch whose
-  data was withheld cannot construct a proof at all (see §4.11).
+  are two books that are never reconciled ON-chain. They ARE
+  reconciled off-chain: deposits flow into the rollup only from L1
+  `Deposited` events (see §4.13), and the watchtower checks every
+  credit against the logs and the credited total against cumulative
+  `totalDeposited` — so the operator cannot invent rollup funds
+  larger than the L1 deposits backing them. A user whose leaf is in
+  a batch whose data was withheld cannot construct a proof at all
+  (see §4.11).
 
 ### 4.5 KEM key compromise / batch data exposure
 
@@ -201,8 +211,9 @@ Trust boundaries:
 
 ### 4.6 State-file tampering / loss
 
-- **Attack:** `state.json` or a batch file is edited (or deleted), so the
-  sequencer builds on a false history or the watchtower cannot verify.
+- **Attack:** `state.json`, `deposits.json`, or a batch file is edited
+  (or deleted), so the sequencer builds on a false history or the
+  watchtower cannot verify.
 - **Mitigations in place:** `settle` refuses to run when the local batch
   count disagrees with the on-chain `batchCount`, so a reset or rolled-back
   `state.json` fails loudly instead of settling a duplicate batch id. The
@@ -213,7 +224,12 @@ Trust boundaries:
   operator-seeded genesis funding — is cross-checked against the chain:
   the watchtower fails the batch if the seeded funding exceeds the
   contract's cumulative `totalDeposited`, so the operator cannot invent
-  rollup funds larger than the L1 deposits backing them.
+  rollup funds larger than the L1 deposits backing them. A tampered
+  `deposits.json` is caught twice: the sequencer re-verifies every
+  pending deposit against the on-chain `Deposited` logs before
+  settling (a fake credit, or an amount larger than its L1 deposit,
+  refuses to settle), and the watchtower re-checks every
+  settled/genesis record the same way (see §4.13).
 - **Residual risk:** the files are local and unprotected — there is no
   signed checkpoint or backup. Losing `state.json` loses the rollup's
   balance history (recoverable only by replaying all batch files from
@@ -348,6 +364,76 @@ Trust boundaries:
   deployment would run multiple independent watchtowers with alerting
   and an on-chain fraud-proof path so a detection has consequences.
 
+### 4.13 Deposit ingestion (auto-credit)
+
+- **Attack:** the operator (or anyone who can edit the operator's
+  files) credits rollup balances that no L1 deposit backs — inventing
+  funds out of thin air — or credits the same deposit twice, or
+  credits a deposit for more than its L1 amount. In v2 a false credit
+  has a direct payout: the credited balance is withdrawable against
+  the next settled root.
+- **How it works (the real state, since 17 Nov 2026):** deposits flow
+  automatically. The deposit watcher (`scripts/deposit-watcher.ts`,
+  `npm run deposit-watcher`) reads `Deposited` events from the
+  settlement contract from a persisted last-processed block and
+  records them in `deployments/deposits.json`, identified by
+  (transaction hash, log index). The sequencer applies the pending
+  ones into the next batch's state transition — deposits first, then
+  the mempool txs — and the batch file records them, so the credit is
+  part of the batch the watchtower replays. The 0.3 QOR genesis
+  deposit is the one hand-credited exception: it was credited before
+  batch #0, before the watcher existed, and is recorded with status
+  "genesis" so the watcher never credits it twice. No manual seeding
+  exists in the live path: `settle` refuses to run without
+  `deposits.json`.
+- **Mitigations in place:** idempotency — a deposit already in
+  `deposits.json` is never credited again, however often the watcher
+  re-scans (proven live: rewinding the watcher's last-processed block
+  and re-running found the 0.1 QOR deposit "already known" and
+  credited nothing). Pre-settle verification — the sequencer
+  re-verifies every pending deposit against the on-chain logs before
+  crediting it, so a tampered `deposits.json` refuses to settle
+  (demonstrated: a fake pending deposit made a dry-run settle refuse
+  with "no Deposited event on-chain (fake credit)"). Post-settlement
+  verification — the watchtower's checks (e) and (f) match every
+  batch claim and every settled/genesis ledger record against the
+  on-chain logs, check the credited total against `totalDeposited`
+  in aggregate and per depositor, and check the ledger against the
+  batch files; a credit larger than its supporting L1 deposit fails
+  the run (demonstrated: inflating batch #3's claimed deposit by
+  1 uqor failed with "the credit EXCEEDS its deposit"). The watcher
+  itself refuses to write its file when the credited total exceeds
+  `totalDeposited`. Non-whole-uqor deposits are recorded as
+  `skipped`, never rounded — the funds stay in the contract.
+- **Evidence (on-chain, not just in tests):** on 17 Nov 2026 the
+  deployer deposited 0.1 QOR (EVM tx
+  `0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e`,
+  block 10252674), the watcher picked it up as pending, batch #3
+  credited it and settled (EVM tx
+  `0xb0d9842996e735efe3d842fae71309625bd75ceab8c61628224c0f12e560391c`,
+  block 10252704), and the deployer withdrew 0.3 QOR against batch
+  #3 with a Merkle proof (EVM tx
+  `0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91`,
+  block 10253087) — deposit → auto-credit → batch → withdraw, every
+  step on-chain. The negative cases are covered in the Hardhat tests
+  (`test/deposit-credit.test.ts`: a fake credit and a credit
+  exceeding its supporting deposit fail at both the watcher/sequencer
+  level and the watchtower level).
+- **Residual risk (honest liveness note):** the watcher is an
+  off-chain process with no schedule and no alerting — if it is down,
+  deposits queue until it runs again. Deposits are never lost,
+  because the events stay on-chain and the next scan picks them up
+  from the persisted last-processed block. But there is no forced
+  inclusion: a sequencer that ignores a pending deposit (or never
+  runs the watcher) strands the depositor's funds in the contract
+  with no on-chain escape hatch — the deposit cannot be reclaimed
+  except by withdrawing a rollup balance the sequencer never
+  credited. The watcher, the sequencer and the watchtower all read
+  the same RPC endpoint by default (configurable via
+  `QORE_EVM_RPC_URL`); a lying endpoint could mislead all three at
+  once. The defence is running the watchtower against an independent
+  endpoint — the checks need no secrets.
+
 ## 5. DEMO-GRADE vs PRODUCTION-GRADE
 
 This is a Developer Fest demo on a testnet. The following are explicit,
@@ -359,11 +445,11 @@ deliberate gaps — not oversights:
 | State commitments | **Done in v2:** Merkle root over (account, balance, nonce) leaves, sorted pairs; every batch file stores the leaves and proofs. | A Verkle tree or a state trie with storage proofs for richer state. |
 | Withdrawals | **Done in v2:** proven against the rollup state root (Merkle proof + cumulative per-account cap), no sequencer help. Still demo-grade: no challenge period, so a false root's leaves are withdrawable; withdrawals do not burn rollup balances or reconcile with the L1 deposit ledger. | A challenge period before withdrawals finalise, on-chain reconciliation of rollup balances with L1 deposits, and a real DA layer so proofs can always be constructed. |
 | Sequencer | Single, centralised, operator-run. No forced inclusion, no rotation, no liveness guarantee. Cannot block withdrawals from settled batches, but can halt new batches and (via §4.11) strand funds by withholding batch data. | Decentralised sequencer set or based sequencing, forced inclusion, escape hatch. |
-| Watchtower | Advisory only — prints FAIL lines, cannot halt settlement or slash. Shares `rollup.ts`/`merkle.ts` with the sequencer, so a shared-library bug is invisible to it. | Independent implementation, on-chain fraud-proof submission, bonded challengers. |
+| Watchtower | Advisory only — prints FAIL lines, cannot halt settlement or slash. Shares `rollup.ts`/`merkle.ts`/`deposits.ts` with the sequencer, so a shared-library bug is invisible to it. | Independent implementation, on-chain fraud-proof submission, bonded challengers. |
 | Batch data | Plaintext published in `deployments/batches/` for verification; the on-chain commitment is to the ciphertext. Transparency chosen over confidentiality. | Real data-availability layer (DA committee, DA chain, or on-chain calldata/blobs) with the plaintext genuinely restricted. |
 | KEM keys | Single key held by the operator; no rotation, no threshold, no forward secrecy. | Rotating keys, threshold decryption, per-batch keys. |
 | User signatures | Rollup transactions are NOT signed by their senders; the sequencer can invent txs from any funded account. | Every rollup tx signed by its sender (ideally PQ-signed). |
-| Deposits | Not auto-credited into rollup balances; the operator seeds `state.json`. | Deposit events credited into the rollup state by the sequencer, verifiable by the watchtower. |
+| Deposits | **Done:** deposit events credited into the rollup state by the sequencer via the deposit watcher, verifiable by the watchtower (checks (e)/(f)); the 0.3 QOR genesis deposit is the one hand-credited exception, recorded as such. Still demo-grade: the watcher is an off-chain process with no schedule, and there is no forced inclusion — a sequencer that ignores a deposit strands it. | On-chain deposit queue with forced inclusion, so the sequencer cannot ignore a deposit; on-chain reconciliation of rollup balances with L1 deposits. |
 | Key management | Mode-600 files on the operator's machine. | HSM/KMS, multisig, timelocks, key rotation. |
 
 ## 6. What would change the assessment

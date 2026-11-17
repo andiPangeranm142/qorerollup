@@ -4,10 +4,12 @@ A minimal post-quantum rollup on QoreChain — a Protocol Builders entry
 for the QoreChain Developer Fest ("Build Before Q-Day").
 
 **Status:** live on the Diana testnet (v2). Settlement contract
-deployed, 3 batches settled with ML-DSA-87 signatures verified
-on-chain, an independent user wallet withdrew 0.05 QOR with a Merkle
-proof and no sequencer help, double-withdraw and tampered-proof attacks
-reverted on-chain, and the watchtower verifies all batches clean.
+deployed, 4 batches settled with ML-DSA-87 signatures verified
+on-chain, L1 deposits flow into rollup balances automatically via the
+deposit watcher (no hand-seeding), a Merkle-proof withdrawal of
+0.3 QOR closed the auto-deposit cycle, double-withdraw and
+tampered-proof attacks reverted on-chain, and the watchtower verifies
+all batches clean — including the deposit credit check.
 
 - Project page: https://build.qorechain.io/p/qorerollup
 - Demo site: https://andipangeranm142.github.io/qorerollup/
@@ -38,7 +40,16 @@ settles them on the QoreChain Diana testnet with post-quantum security:
   several batch roots cannot double-spend.
 - A **watchtower** re-verifies every batch (signature, state replay,
   Merkle tree + every leaf's proof, receipt, decrypt check) and flags
-  invalid ones.
+  invalid ones — including a deposit credit check: every credited
+  deposit is matched against the on-chain `Deposited` logs, and the
+  credited total is checked against `totalDeposited` in aggregate and
+  per depositor.
+- **Automatic deposit ingestion:** the deposit watcher reads
+  `Deposited` events from the settlement contract and credits the
+  depositor's rollup balance in the next batch — idempotently, so a
+  deposit is never credited twice. The sequencer re-verifies every
+  pending deposit against the chain before settling, and the
+  watchtower re-checks every credit after settlement.
 - Batch payloads are sealed with **ML-KEM-1024** (+ AES-256-GCM);
   the on-chain commitment is to the ciphertext.
 - A **threat model** ([THREAT_MODEL.md](THREAT_MODEL.md)) documents the
@@ -52,21 +63,32 @@ settles them on the QoreChain Diana testnet with post-quantum security:
   wallet with a Merkle proof against batch #2's state root, no
   sequencer involvement (see Live usage). The same call sent twice
   REVERTED on-chain (`ZeroWithdraw`), and a call with one flipped hex
-  char in the proof REVERTED on-chain (`InvalidMerkleProof`).
+  char in the proof REVERTED on-chain (`InvalidMerkleProof`). A second
+  withdrawal closed the auto-deposit cycle: the deployer withdrew
+  0.3 QOR against batch #3's state root — its full leaf balance,
+  which includes the auto-credited 0.1 QOR deposit — again with no
+  sequencer involvement.
 - [x] Verified settlement receipt — each batch gets a `receiptHash`
   (`keccak256("QoreRollup.receipt", chainid, contract, batchId,
   stateRoot, txDataCommitment)`), emitted in `BatchSettled` and
   re-verified by the watchtower.
-- [x] Watchtower — `npm run watchtower` verifies all 3 batches OK
+- [x] Watchtower — `npm run watchtower` verifies all 4 batches OK
   (signature, state replay, Merkle tree + proofs, receipt, decrypt
-  check, genesis-funding cross-check). Tampered batches are detected
+  check, genesis-funding cross-check, deposit credit check — every
+  credited deposit matched against the on-chain `Deposited` logs,
+  and the credited total checked against `totalDeposited` in
+  aggregate and per depositor). Tampered batches are detected
   (see tests) — and demonstrated live: flipping one hex char in a
   batch file's claimed state root made the watchtower FAIL that batch
   on eight independent checks (file vs on-chain root, replayed root,
   leaves-recomputed root, all four leaf proofs, decrypted payload)
   and FAIL the next batch on the broken chain; restoring the file
-  byte-identical returned ALL BATCHES OK. Every run is appended to
-  the verification log
+  byte-identical returned ALL BATCHES OK. The deposit checks were
+  demonstrated the same way: inflating batch #3's claimed deposit by
+  1 uqor made the watchtower FAIL it ("the credit EXCEEDS its
+  deposit"), and naming a fake deposit tx made it FAIL on the fake
+  credit even though the batch otherwise verified clean. Every run
+  is appended to the verification log
   ([deployments/watchtower-log.json](deployments/watchtower-log.json)),
   with the contract address on each entry so v1 and v2 runs are
   distinguishable.
@@ -123,32 +145,63 @@ ciphertexts): [deployments/batches/](deployments/batches/).
 | **Double-withdraw (attack demo)** | Same Merkle-proof withdrawal sent again — **REVERTED on-chain** (`ZeroWithdraw`), cumulative cap unchanged | `0x1da16ddeeea2b9fa5f456911b36ed615b20b7b551491f2a94b81a532b177a86d` | 10250203 |
 | **Tampered-proof (attack demo)** | Withdrawal with one flipped hex char in the proof — **REVERTED on-chain** (`InvalidMerkleProof`) | `0x35715e361b5289e5d4259ea705a56f58c07f1d993323efce8eb946551a076519` | 10250208 |
 | **Forged batch (attack demo)** | Genuine ML-DSA-87 signature over the WRONG digest, submitted by the sequencer itself — **REVERTED on-chain** (`InvalidBatchSignature`), `batchCount` unchanged | `0x2fbb8444db842c419b180dc5b34b64b4b636b2c4b1199faedc025558f6d206f3` | 10250217 |
+| Deposit (auto-credit cycle) | 0.1 QOR into the rollup — picked up by the deposit watcher and credited by batch #3 | `0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e` | 10252674 |
+| Batch #3 | 1 deposit (100,000 uqor, auto-credited) + 1 tx: deployer → user wallet, 10,000 uqor (5 leaves) | `0xb0d9842996e735efe3d842fae71309625bd75ceab8c61628224c0f12e560391c` | 10252704 |
+| **Merkle withdrawal (auto-credit cycle)** | **Deployer withdraws 0.3 QOR with a 3-element Merkle proof against batch #3 — its full leaf balance, which includes the auto-credited 0.1 QOR deposit; no sequencer involvement** | `0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91` | 10253087 |
 
-Final on-chain state (verified by independent read): `batchCount` 3,
-`totalDeposited` 0.3 QOR, `totalWithdrawn` 0.05 QOR,
-`withdrawnAmount[user]` 50,000 uqor, `deposits[deployer]` 0.3 QOR
-(v2 withdrawals do not touch the L1 deposit ledger), contract balance
-0.25 QOR. Final rollup balances: deployer 210,000 uqor, user wallet
-50,000, `0x1111…1111` 15,000, `0x2222…2222` 10,000, `0x3333…3333`
-15,000 (total 300,000 — conserved from the 0.3 QOR deposit).
+Final on-chain state (verified by independent read): `batchCount` 4,
+`totalDeposited` 0.4 QOR, `totalWithdrawn` 0.35 QOR,
+`withdrawnAmount[deployer]` 300,000 uqor, `withdrawnAmount[user]`
+50,000 uqor, `deposits[deployer]` 0.4 QOR (v2 withdrawals do not
+touch the L1 deposit ledger), contract balance 0.05 QOR. Final
+rollup balances: deployer 300,000 uqor, user wallet 60,000,
+`0x1111…1111` 15,000, `0x2222…2222` 10,000, `0x3333…3333` 15,000
+(total 400,000 — conserved from the 0.4 QOR deposited). Solvency:
+the remaining withdrawable amounts (leaf balance minus
+`withdrawnAmount` per account) total exactly 50,000 uqor — the
+contract's balance.
 
-The rollup balances were operator-seeded from the L1 deposit: the
-0.3 QOR deposit was credited into `deployments/state.json` by hand
-before the first settle. L1 deposits are NOT auto-credited — a
-documented demo gap (see [THREAT_MODEL.md](THREAT_MODEL.md) §4).
-The watchtower cross-checks the seeded funding against the contract's
-cumulative `totalDeposited`, so the operator cannot invent rollup
-funds larger than the L1 deposits backing them.
+L1 deposits are auto-credited: the deposit watcher
+(`npm run deposit-watcher`) reads `Deposited` events from the
+settlement contract, records them in `deployments/deposits.json`
+(identified by transaction hash + log index, so re-runs never credit
+twice), and the sequencer applies the pending ones into the next
+batch's state transition — deposits first, then the mempool txs. The
+0.1 QOR deposit in the table above was credited exactly this way:
+deposit tx `0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e`
+(Cosmos `D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9`,
+block 10252674), watcher run recorded in `deployments/usage.json`,
+credited by batch #3
+(`0xb0d9842996e735efe3d842fae71309625bd75ceab8c61628224c0f12e560391c`,
+Cosmos `E0E7F28A654A162FA5822356C25FD3639A24775367A7E928A12C256508EFA818`,
+block 10252704), and the cycle closed with the deployer's 0.3 QOR
+Merkle-proof withdrawal against batch #3
+(`0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91`,
+Cosmos `B11F3986401D66598A1DF23CCEF90E7FA807A385C3D2F406AC96F8DA626640FB`,
+block 10253087). The 0.3 QOR genesis deposit is the one exception:
+it was credited by hand before batch #0, before the watcher existed,
+and is recorded in `deployments/deposits.json` with status "genesis"
+so it is never credited twice. No manual seeding exists in the live
+path — the sequencer refuses to settle without `deposits.json`, and
+re-verifies every pending deposit against the on-chain logs before
+crediting it. The watchtower re-checks every credit after settlement
+(see [THREAT_MODEL.md](THREAT_MODEL.md) §4.13): a credit larger than
+its supporting L1 deposit fails the run.
 
 ## How it works
 
 ```
+L1 deposits ──► deposit watcher (npm run deposit-watcher) reads
+                 `Deposited` events ──► deployments/deposits.json
+                 (pending → settled by the next batch)
+
 User txs ──► mempool (deployments/mempool.json)
                 │  npm run sequencer settle
                 ▼
-Sequencer builds a batch: applies txs to the rollup state, computes the
-new Merkle state root + tx-data commitment, seals the batch payload with
-ML-KEM-1024, signs the batch digest with ML-DSA-87 (pqcSign)
+Sequencer builds a batch: applies pending deposits first, then the
+mempool txs, to the rollup state; computes the new Merkle state root
++ tx-data commitment, seals the batch payload with ML-KEM-1024,
+signs the batch digest with ML-DSA-87 (pqcSign)
                 │  hybrid-signed EVM tx (needs an open EVM window)
                 ▼
 QoreRollup.submitBatch: checks the caller is the sequencer, reads the
@@ -158,7 +211,7 @@ the signature via pqcVerify (0x0A01), records the batch + receiptHash
                 ▼
 Watchtower (npm run watchtower) re-verifies every batch off-chain:
 signature vs the registered key, state replay, Merkle tree + proofs,
-receipt, decrypt check.
+receipt, decrypt check, deposit credits vs the on-chain logs.
 
 Withdrawals (no sequencer): the user reads their leaf + proof from the
 published batch file and calls QoreRollup.withdraw(batchId, account,
@@ -184,16 +237,15 @@ mode 600, outside the repo; see `.env.example`). Never commit real keys.
 ```sh
 npm install
 npm run compile
-npm test                    # 100 tests (34 contract + 15 merkle + 23 sequencer + 18 watchtower + 10 KEM)
+npm test                    # 150 tests (34 contract + 15 merkle + 23 sequencer + 18 watchtower + 10 KEM + 27 deposit-watcher + 23 deposit-credit)
 npm run window register     # register the account's ML-DSA-87 key (once)
 npm run window open         # open an EVM authorisation window
 npm run deploy              # deploy the settlement contract
 npm run sequencer keygen    # generate the rollup ML-KEM-1024 data keypair
-npm run usage deposit --amount 300000        # deposit 0.3 QOR
-# Seed deployments/state.json with the deposit (see THREAT_MODEL.md §4),
-# then:
-npm run sequencer enqueue --from <0x> --to <0x> --amount <uqor>
-npm run sequencer settle    # settle the mempool as one ML-DSA-signed batch
+npm run usage -- deposit --amount 300000     # deposit 0.3 QOR
+npm run deposit-watcher                      # ingest the deposit (auto-credit; idempotent)
+npm run sequencer -- enqueue --from <0x> --to <0x> --amount <uqor>
+npm run sequencer -- settle    # settle the mempool as one ML-DSA-signed batch
 npm run merkle-withdraw -- --batch <id> [--dry-run]   # withdraw with a Merkle proof (uses ../.env.user)
 npm run watchtower          # re-verify every settled batch
 npm run forged-batch        # attack demo: submit a batch with a forged
@@ -203,15 +255,20 @@ npm run sequencer status    # contract + local state, read-only
 
 ## Tests
 
-- `npm test` — 100 passing: 34 contract tests (Hardhat, mock
+- `npm test` — 150 passing: 34 contract tests (Hardhat, mock
   precompiles installed at 0x0A01/0x0A02 via `hardhat_setCode`,
   including Merkle-proof withdrawals proven with the TypeScript tree
-  against the contract) and 66 merkle/sequencer/watchtower/KEM tests
+  against the contract), 66 merkle/sequencer/watchtower/KEM tests
   (Merkle tree + proofs incl. odd leaf counts, state transitions,
   digest formulas, KEM round-trip + tamper detection, watchtower
   detection of tampered batches — bad state root, bad signature,
   tampered txs, tampered leaves/proofs, tampered ciphertext, wrong
-  receipt).
+  receipt), 27 deposit-watcher tests (event parsing, idempotent
+  credit, no double-credit on re-run, deposit-aware batch
+  verification with real ML-DSA-87 + ML-KEM crypto), and 23
+  deposit-credit tests — the negative cases: a fake credit and a
+  credit exceeding its supporting deposit fail at both the
+  watcher/sequencer level and the watchtower level.
 - `npm run typecheck` — clean.
 
 ## AI usage

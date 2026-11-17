@@ -30,10 +30,19 @@ const kem = readJson(dep("kem-public-key.json"));
 
 const step = (command) => usage.steps.find((s) => s.command === command);
 const settles = usage.steps.filter((s) => s.command === "settle");
-const deposit = step("deposit");
+// ALL deposit steps (the 0.3 QOR genesis deposit + the 0.1 QOR
+// auto-credit-cycle deposit): totals must SUM them, not take the first.
+const depositSteps = usage.steps.filter((s) => s.command === "deposit");
+const deposit = depositSteps[0];
 // v2: withdrawals are Merkle-proof withdrawals (command "merkle-withdraw",
 // no withdrawalId); fall back to the v1 "withdraw" step for old usage logs.
-const withdraw = step("withdraw") ?? step("merkle-withdraw");
+// There are two of them now (user 0.05 QOR + deployer 0.3 QOR): totals
+// must SUM them, and the cycle shows both.
+const withdrawSteps = usage.steps.filter(
+  (s) => s.command === "merkle-withdraw" || s.command === "withdraw",
+);
+const withdraw = withdrawSteps[0];
+const sumUqor = (steps) => steps.reduce((sum, s) => sum + BigInt(s.amountUqor), 0n).toString();
 const forged = step("forged-batch");
 const seed = step("seed-state");
 // On-chain reverted withdrawal attacks (v2): the same Merkle-proof
@@ -82,6 +91,14 @@ const batches = settles.map((s) => {
       to: t.to,
       amountUqor: t.amount,
       nonce: t.nonce,
+    })),
+    // L1 deposits credited by this batch (applied before the txs).
+    // Empty for batches 0-2, which predate the deposit watcher.
+    deposits: (file.deposits ?? []).map((d) => ({
+      depositor: d.depositor,
+      amountUqor: d.amountUqor,
+      tx: d.tx,
+      block: d.block,
     })),
     balancesAfter: file.balances,
   };
@@ -159,25 +176,28 @@ const evidence = {
   // re-reads them from the chain and falls back to these on failure).
   totals: {
     batchCount: state.batchCount,
-    totalDepositedUqor: deposit.amountUqor,
-    totalWithdrawnUqor: withdraw.amountUqor,
-    // v1: deposits(deployer) = deposited − withdrawn (single depositor).
+    totalDepositedUqor: sumUqor(depositSteps),
+    totalWithdrawnUqor: sumUqor(withdrawSteps),
     // v2: Merkle-proof withdrawals do NOT touch the deposits ledger, so
-    // deposits(deployer) is still the full deposit.
-    deployerDepositUqor: withdraw.withdrawalId
-      ? String(BigInt(deposit.amountUqor) - BigInt(withdraw.amountUqor))
-      : deposit.amountUqor,
+    // deposits(deployer) is still the full deposit (the deployer is the
+    // only depositor). v1 subtracted the withdrawal; v2 does not.
+    deployerDepositUqor: sumUqor(depositSteps),
     finalStateRoot: state.stateRoot,
   },
   balances: state.balances,
   batches,
   cycle: {
+    // The seed-state step's own note (written when the gap was real)
+    // says deposits are "NOT auto-credited" — stale since the watcher
+    // landed. The usage.json history is left intact, but the demo
+    // presents the corrected framing: the genesis deposit is the one
+    // hand-credited exception, and every later deposit is auto-credited.
     seed: seed
       ? {
           at: seed.at,
           account: seed.account,
           amountUqor: seed.amountUqor,
-          note: seed.note,
+          note: "Genesis funding: the 0.3 QOR L1 deposit was credited by hand into deployments/state.json before batch #0 — before the deposit watcher existed. Recorded in deployments/deposits.json with status \"genesis\"; every later deposit flows in automatically via the watcher.",
         }
       : null,
     deposit: {
@@ -187,6 +207,15 @@ const evidence = {
       cosmosTx: deposit.cosmosTx,
       block: deposit.block,
     },
+    // Every deposit (the genesis 0.3 QOR + the auto-credit 0.1 QOR),
+    // in chain order — the cycle section renders each one.
+    deposits: depositSteps.map((d) => ({
+      at: d.at,
+      amountUqor: d.amountUqor,
+      tx: d.tx,
+      cosmosTx: d.cosmosTx,
+      block: d.block,
+    })),
     withdraw: {
       at: withdraw.at,
       amountUqor: withdraw.amountUqor,
@@ -199,6 +228,19 @@ const evidence = {
       cosmosTx: withdraw.cosmosTx,
       block: withdraw.block,
     },
+    // Every Merkle-proof withdrawal (user 0.05 QOR against batch #2 +
+    // deployer 0.3 QOR against batch #3), in chain order.
+    withdrawals: withdrawSteps.map((w) => ({
+      at: w.at,
+      amountUqor: w.amountUqor,
+      account: w.account ?? null,
+      batchId: w.batchId ?? null,
+      leaf: w.leaf ?? w.withdrawalId ?? null,
+      proofSteps: Array.isArray(w.proof) ? w.proof.length : (w.proofSteps ?? null),
+      tx: w.tx,
+      cosmosTx: w.cosmosTx,
+      block: w.block,
+    })),
     reverts,
     forged: {
       at: forged.at,
@@ -219,6 +261,10 @@ const evidence = {
       batchCount: latestRun.batchCount,
       decryptCheck: latestRun.decryptCheck,
       results: latestRun.results,
+      // Deposit credit check (e)/(f) from the latest run, or null for
+      // runs that predate it. Emitted for the demo to display later;
+      // the current page does not render it yet.
+      depositChecks: latestRun.depositChecks ?? null,
     },
     tamperDemo: tamperRun
       ? {
@@ -257,6 +303,13 @@ export type BatchTx = {
   nonce: number;
 };
 
+export type BatchDeposit = {
+  depositor: string;
+  amountUqor: string;
+  tx: string;
+  block: number;
+};
+
 export type BatchSummary = {
   batchId: number;
   txCount: number;
@@ -274,6 +327,7 @@ export type BatchSummary = {
   kemCiphertextBytes: number;
   sealedBlobBytes: number;
   txs: BatchTx[];
+  deposits: BatchDeposit[];
   balancesAfter: Record<string, string>;
 };
 
@@ -337,6 +391,7 @@ export type Evidence = {
   cycle: {
     seed: { at: string; account: string; amountUqor: string; note: string } | null;
     deposit: { at: string; amountUqor: string; tx: string; cosmosTx: string; block: number };
+    deposits: { at: string; amountUqor: string; tx: string; cosmosTx: string; block: number }[];
     withdraw: {
       at: string;
       amountUqor: string;
@@ -345,6 +400,17 @@ export type Evidence = {
       cosmosTx: string;
       block: number;
     };
+    withdrawals: {
+      at: string;
+      amountUqor: string;
+      account: string | null;
+      batchId: number | null;
+      leaf: string | null;
+      proofSteps: number | null;
+      tx: string;
+      cosmosTx: string;
+      block: number;
+    }[];
     reverts: RevertEvidence[];
     forged: {
       at: string;
@@ -365,6 +431,7 @@ export type Evidence = {
       batchCount: number;
       decryptCheck: string;
       results: WatchtowerResult[];
+      depositChecks: { checked: boolean; ok: boolean; failures: string[] } | null;
     };
     tamperDemo: { at: string; allOk: boolean; results: WatchtowerResult[]; tampered: string } | null;
   };

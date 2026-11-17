@@ -41,6 +41,7 @@
     "dev": "vite",
     "preview": "vite preview",
     "sequencer": "tsx --env-file=../.env scripts/sequencer.ts",
+    "deposit-watcher": "tsx scripts/deposit-watcher.ts",
     "test": "hardhat test",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.app.json",
     "usage": "tsx --env-file=../.env scripts/usage.ts",

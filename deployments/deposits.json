@@ -1,0 +1,36 @@
+{
+  "chainId": 9800,
+  "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+  "deposits": [
+    {
+      "amountUqor": "300000",
+      "amountWei": "300000000000000000",
+      "block": 10250139,
+      "cosmosTx": "2BA3C0DEEE93538EBE431F378F5DD90BD90DF594CBC87F75182D800AED71B6CE",
+      "creditedAt": "2026-11-17T10:32:59.757Z",
+      "creditedInBatch": null,
+      "depositor": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+      "logIndex": 0,
+      "note": "Genesis deposit: credited by hand into deployments/state.json before batch #0 (see usage.json seed-state step), before the deposit watcher existed. Recorded here so the watcher never credits it twice.",
+      "recordedAt": "2026-11-17T10:32:59.757Z",
+      "status": "genesis",
+      "tx": "0x0a39abcbd8307280e19f3e035bbbde29a36804b865da95f74d6fac4dd73ee2a5"
+    },
+    {
+      "depositor": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+      "amountUqor": "100000",
+      "amountWei": "100000000000000000",
+      "tx": "0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e",
+      "block": 10252674,
+      "logIndex": 0,
+      "status": "settled",
+      "creditedInBatch": 3,
+      "recordedAt": "2026-11-17T11:33:25.962Z",
+      "cosmosTx": "D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9",
+      "creditedAt": "2026-11-17T11:34:03.608Z"
+    }
+  ],
+  "lastProcessedBlock": 10253113,
+  "network": "qorechain-diana",
+  "note": "Deposit watcher state (scripts/deposit-watcher.ts). Deposits are identified by (transaction hash, log index); a deposit already recorded here is never credited again, however often the watcher re-scans. Statuses: pending (seen on-chain, awaiting the next settle), settled (credited by a batch), genesis (credited by hand before the watcher existed), skipped (seen but not creditable — e.g. a non-whole-uqor amount; funds stay in the contract)."
+}

@@ -19,11 +19,22 @@
  *   ../kem-key.json (mode 600); only the public key is committed.
  * - The mempool is cleared ONLY after the settlement receipt confirms.
  *
- * Balances: rollup balances live in deployments/state.json, seeded by the
- * operator (genesis state is empty). L1 deposits are recorded by the
- * contract but this demo does NOT auto-credit them into rollup balances —
- * see THREAT_MODEL.md. A settle with unfunded senders fails with an
- * "insufficient balance" error naming the account.
+ * Balances: rollup balances live in deployments/state.json. L1 deposits
+ * flow in automatically: the deposit watcher
+ * (scripts/deposit-watcher.ts, `npm run deposit-watcher`) reads
+ * `Deposited` events from the settlement contract and records them in
+ * deployments/deposits.json; `settle` applies the pending ones into the
+ * batch's state transition (deposits first, then the mempool txs) and
+ * marks them settled — so a deposit's credit is part of the batch the
+ * watchtower replays, not a side channel. Before crediting anything,
+ * `settle` re-verifies every pending deposit against the on-chain
+ * `Deposited` logs: a tampered deposits.json (a fake credit, or an
+ * amount larger than its L1 deposit) refuses to settle. A settle with
+ * unfunded senders fails with an "insufficient balance" error naming
+ * the account. (The genesis funding — the 0.3 QOR deposit credited
+ * before batch #0 — predates the watcher and was seeded by hand; it is
+ * recorded in deployments/deposits.json with status "genesis" so it is
+ * never credited twice.)
  *
  * State root (v2): the Merkle root over the post-batch balances (one leaf
  * per non-zero balance, leaf = keccak256(account, balance, nonce), sorted
@@ -46,6 +57,7 @@ import {
   hexToBytes,
   isAddress,
   keccak256,
+  parseAbi,
   toHex,
   type Address,
   type Hex,
@@ -55,17 +67,28 @@ import path from "node:path";
 import { cosmosHashForEvmTx } from "./cosmos-hash";
 import {
   GENESIS_STATE_ROOT,
+  applyDeposits,
   applyTxs,
   batchDigest,
   receiptHash,
   rollupTxFromJson,
   rollupTxToJson,
   txDataCommitment,
+  type BatchDepositJson,
   type BatchFile,
   type BatchPayload,
   type RollupTx,
   type RollupTxJson,
 } from "../src/lib/rollup";
+import {
+  depositKey,
+  markDepositsSettled,
+  matchDepositClaims,
+  normalizeDepositedLogs,
+  pendingDeposits,
+  type DepositedLogInput,
+  type DepositsFile,
+} from "../src/lib/deposits";
 import { merkleLeafToJson, type MerkleLeaf } from "../src/lib/merkle";
 import {
   generateKemKeypair,
@@ -78,6 +101,12 @@ const TESTNET_CHAIN_ID = 9800;
 const TESTNET_REST = "https://api-testnet.qore.host";
 const SEQUENCER_EVM = "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f" as Address;
 const SEQUENCER_COSMOS = "qor1q9q2q4hwxl2jgzcrjlkd7y68m2qwxwul0nheda";
+/** getLogs range per request (keeps RPC responses small). */
+const SCAN_CHUNK_BLOCKS = 2000n;
+
+const DEPOSITED_EVENT = parseAbi([
+  "event Deposited(address indexed depositor, uint256 amount)",
+])[0];
 
 // npm scripts run with the working directory at the package root.
 const ROOT = process.cwd();
@@ -86,6 +115,7 @@ const BATCHES_DIR = path.resolve(DEPLOYMENTS, "batches");
 const STATE_PATH = path.resolve(DEPLOYMENTS, "state.json");
 const MEMPOOL_PATH = path.resolve(DEPLOYMENTS, "mempool.json");
 const USAGE_PATH = path.resolve(DEPLOYMENTS, "usage.json");
+const DEPOSITS_PATH = path.resolve(DEPLOYMENTS, "deposits.json");
 const KEM_PUBLIC_PATH = path.resolve(DEPLOYMENTS, "kem-public-key.json");
 /** OUTSIDE the repo, mode 600 — never committed, never printed. */
 const KEM_SECRET_PATH = path.resolve(ROOT, "..", "kem-key.json");
@@ -116,14 +146,14 @@ function writeJson(file: string, value: unknown): void {
   fs.writeFileSync(file, JSON.stringify(value, null, 2) + "\n");
 }
 
-function loadDeployment(): { contract: Address } {
+function loadDeployment(): { contract: Address; deployBlock: number } {
   const deploymentPath = path.resolve(DEPLOYMENTS, "testnet.json");
   if (!fs.existsSync(deploymentPath)) {
     throw new Error(
       "No deployments/testnet.json yet — the settlement contract has not been deployed. Run `npm run deploy` first.",
     );
   }
-  return readJson<{ contract: Address }>(deploymentPath);
+  return readJson<{ contract: Address; deployBlock: number }>(deploymentPath);
 }
 
 function loadAbi(): never {
@@ -145,7 +175,7 @@ function loadAbi(): never {
 
 async function connect() {
   const evmRpc = process.env.QORE_EVM_RPC_URL ?? "https://evm-testnet.qore.host";
-  const { contract } = loadDeployment();
+  const { contract, deployBlock } = loadDeployment();
   const abi = loadAbi();
   const client = await createEvmClient({ endpoints: { evmRpc } });
   const chainId = await client.getChainId();
@@ -154,7 +184,7 @@ async function connect() {
       `Refusing: chain id is ${chainId}, expected testnet ${TESTNET_CHAIN_ID}.`,
     );
   }
-  return { client, contract, abi, chainId };
+  return { client, contract, deployBlock, abi, chainId };
 }
 
 function genesisState(): RollupState {
@@ -308,7 +338,7 @@ async function enqueue(args: string[]): Promise<void> {
 /** settle: build one batch from the whole mempool and settle it on-chain. */
 async function settle(args: string[]): Promise<void> {
   const dryRun = args.includes("--dry-run");
-  const { client, contract, abi, chainId } = await connect();
+  const { client, contract, deployBlock, abi, chainId } = await connect();
   const privateKey = requireEnv("QORE_EVM_PRIVATE_KEY") as Hex;
   const mnemonic = requireEnv("QORE_MNEMONIC");
   const account = evmAccountFromPrivateKey(privateKey);
@@ -351,23 +381,98 @@ async function settle(args: string[]): Promise<void> {
 
   const txs: RollupTx[] = mempool.map(rollupTxFromJson);
   const { balances, nonces } = stateMaps(state);
+
+  // L1 deposits flow in through the watcher (deployments/deposits.json),
+  // never by hand. Refusing to settle without the file means a deposit
+  // can never be silently skipped — the operator runs the watcher first.
+  if (!fs.existsSync(DEPOSITS_PATH)) {
+    throw new Error(
+      "No deployments/deposits.json yet — run `npm run deposit-watcher` first so " +
+        "L1 deposits are ingested before settling.",
+    );
+  }
+  const depositsFile = readJson<DepositsFile>(DEPOSITS_PATH);
+  const pending = pendingDeposits(depositsFile);
+  const batchDeposits: BatchDepositJson[] = pending.map((d) => ({
+    depositor: d.depositor,
+    amountUqor: d.amountUqor,
+    tx: d.tx,
+    block: d.block,
+  }));
+  if (batchDeposits.length > 0) {
+    const total = batchDeposits.reduce((sum, d) => sum + BigInt(d.amountUqor), 0n);
+    console.log(
+      `deposits: ${batchDeposits.length} pending (${total} uqor) will be credited by this batch`,
+    );
+    for (const d of batchDeposits) {
+      console.log(`  +${d.amountUqor} uqor to ${d.depositor} (tx ${d.tx}, block ${d.block})`);
+    }
+    // First line of defence (the watchtower re-checks after settlement):
+    // verify every pending deposit against the on-chain `Deposited`
+    // logs BEFORE crediting it. A tampered deposits.json — a fake
+    // credit, or an amount larger than its L1 deposit — refuses to
+    // settle here instead of reaching a batch. Runs on dry runs too.
+    const latestBlock = await client.publicClient.getBlockNumber();
+    const rawLogs: DepositedLogInput[] = [];
+    for (
+      let start = BigInt(deployBlock);
+      start <= latestBlock;
+      start += SCAN_CHUNK_BLOCKS
+    ) {
+      const end = start + SCAN_CHUNK_BLOCKS - 1n > latestBlock ? latestBlock : start + SCAN_CHUNK_BLOCKS - 1n;
+      rawLogs.push(
+        ...(await client.publicClient.getLogs({
+          address: contract,
+          event: DEPOSITED_EVENT,
+          fromBlock: start,
+          toBlock: end,
+        })),
+      );
+    }
+    const failures = matchDepositClaims(
+      pending.map((d) => ({
+        depositor: d.depositor,
+        amountUqor: d.amountUqor,
+        tx: d.tx,
+        block: d.block,
+        logIndex: d.logIndex,
+        source: `pending deposit ${d.tx}`,
+      })),
+      normalizeDepositedLogs(rawLogs),
+    );
+    if (failures.length > 0) {
+      throw new Error(
+        "Refusing to settle: pending deposits do not match the on-chain Deposited events:\n" +
+          failures.map((f) => `  - ${f.message}`).join("\n") +
+          "\nReconcile deployments/deposits.json against the chain (or re-run `npm run deposit-watcher`) before settling.",
+      );
+    }
+    console.log(
+      `deposits verified: ${batchDeposits.length} pending deposit(s) match the on-chain Deposited events`,
+    );
+  }
+
   let newStateRoot: Hex;
   let newBalances: Map<Address, bigint>;
   let newNonces: Map<Address, number>;
   let leaves: MerkleLeaf[];
   let proofs: Record<string, Hex[]>;
   try {
+    // Deposits credit first, then the mempool transactions — the same
+    // order the watchtower replays (see verifyBatch).
+    const fundedBalances = applyDeposits(balances, batchDeposits);
     ({ newStateRoot, newBalances, newNonces, leaves, proofs } = applyTxs(
       state.stateRoot,
-      balances,
+      fundedBalances,
       txs,
       nonces,
     ));
   } catch (err) {
     throw new Error(
       `Batch build failed: ${err instanceof Error ? err.message : err}\n` +
-        "Rollup balances live in deployments/state.json (seeded by the operator); " +
-        "an 'insufficient balance' here means the sender was never funded in the rollup state.",
+        "Rollup balances live in deployments/state.json; L1 deposits flow in via " +
+        "`npm run deposit-watcher` (deployments/deposits.json). An 'insufficient balance' " +
+        "here means the sender was never funded in the rollup state.",
     );
   }
 
@@ -450,6 +555,9 @@ async function settle(args: string[]): Promise<void> {
   const batchFile: BatchFile = {
     batchId,
     txs: txs.map(rollupTxToJson),
+    // L1 deposits credited by this batch (applied before the txs). The
+    // watchtower replays them and matches each against the on-chain logs.
+    deposits: batchDeposits,
     prevStateRoot: state.stateRoot,
     stateRoot: newStateRoot,
     txDataCommitment: commitment,
@@ -488,6 +596,8 @@ async function settle(args: string[]): Promise<void> {
     batchId,
     txCount: txs.length,
     leafCount: leaves.length,
+    deposits: batchDeposits,
+    depositsUqor: batchDeposits.reduce((sum, d) => sum + BigInt(d.amountUqor), 0n).toString(),
     stateRoot: newStateRoot,
     txDataCommitment: commitment,
     encryptedDataHash,
@@ -499,6 +609,19 @@ async function settle(args: string[]): Promise<void> {
     receiptHash: receipt,
   });
   writeJson(MEMPOOL_PATH, []);
+  if (batchDeposits.length > 0) {
+    // Only now — receipt confirmed — are the deposits marked settled, so
+    // a failed settle never loses a deposit: it stays pending for the
+    // next batch.
+    const settledFile = markDepositsSettled(
+      depositsFile,
+      new Set(pending.map((p) => depositKey(p.tx, p.logIndex))),
+      batchId,
+      new Date().toISOString(),
+    );
+    writeJson(DEPOSITS_PATH, settledFile);
+    console.log(`Marked ${batchDeposits.length} deposit(s) as settled by batch #${batchId}.`);
+  }
   console.log(`\nBatch #${batchId} settled. Wrote deployments/batches/batch-${batchId}.json`);
   console.log("Mempool cleared.");
 }
@@ -532,6 +655,13 @@ async function status(): Promise<void> {
   console.log(`local batch:    ${state.batchCount}`);
   console.log(`local root:     ${state.stateRoot}`);
   console.log(`mempool:        ${mempool.length} tx(s)`);
+  if (fs.existsSync(DEPOSITS_PATH)) {
+    const pending = pendingDeposits(readJson<DepositsFile>(DEPOSITS_PATH));
+    const pendingTotal = pending.reduce((sum, d) => sum + BigInt(d.amountUqor), 0n);
+    console.log(`pending deposits: ${pending.length} (${pendingTotal} uqor awaiting the next settle)`);
+  } else {
+    console.log("pending deposits: unknown (no deployments/deposits.json — run `npm run deposit-watcher`)");
+  }
 }
 
 const USAGE =

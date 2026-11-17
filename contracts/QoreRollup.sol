@@ -93,9 +93,13 @@ interface IQorePqcVerify {
 ///         construct a proof: if ALL batch data were withheld, a user could
 ///         not prove their balance — mitigated only by the batch files
 ///         being published in the public repo and checked by the watchtower.
-///         L1 deposits are NOT auto-credited into rollup balances (the
-///         operator seeds them); the `deposits` mapping is a record of L1
-///         deposits only and withdrawals do not consult it. The contract
+///         L1 deposits ARE credited into rollup balances automatically:
+///         the off-chain deposit watcher reads the `Deposited` events
+///         and the sequencer applies the pending ones into the next
+///         batch's state transition (see THREAT_MODEL.md §4.13). The
+///         `deposits` mapping itself is still only a record of L1
+///         deposits — withdrawals do not consult it; they prove a
+///         rollup balance against a batch state root. The contract
 ///         cannot see whether a window is open (native state is not
 ///         observable from the EVM), so layer 1 is enforced by the chain,
 ///         not by this contract. Finally, a lost ML-DSA key means the
@@ -334,8 +338,12 @@ contract QoreRollup {
 
     /// @notice Deposit QOR into the rollup's L1 ledger. Anyone may deposit;
     ///         deposits need no PQC key — only batch settlement is gated.
-    ///         Note: deposits are NOT auto-credited into rollup balances
-    ///         (the operator seeds them); see THREAT_MODEL.md §4.
+    ///         Deposits ARE auto-credited into rollup balances: the
+    ///         off-chain deposit watcher reads the `Deposited` event and
+    ///         the sequencer applies it into the next batch's state
+    ///         transition (see THREAT_MODEL.md §4.13). The genesis deposit
+    ///         predates the watcher and was seeded by hand; it is recorded
+    ///         in deployments/deposits.json so it is never credited twice.
     function deposit() external payable {
         if (msg.value == 0) revert ZeroDeposit();
         deposits[msg.sender] += msg.value;

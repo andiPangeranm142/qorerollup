@@ -262,6 +262,22 @@ function BatchCard({ batch, liveBatch }: { batch: BatchSummary; liveBatch?: Live
             </ul>
           </dd>
         </div>
+        {batch.deposits.length > 0 && (
+          <div>
+            <dt>L1 deposits credited (auto-credit)</dt>
+            <dd>
+              <ul className="tx-list">
+                {batch.deposits.map((d) => (
+                  <li key={d.tx} className="mono">
+                    +{Number(d.amountUqor).toLocaleString("en-US")} uqor ({uqorToQor(d.amountUqor)}{" "}
+                    QOR) to {shorten(d.depositor, 8, 6)} · deposit tx{" "}
+                    <HashLink hash={d.tx} /> · block {d.block.toLocaleString("en-US")}
+                  </li>
+                ))}
+              </ul>
+            </dd>
+          </div>
+        )}
         <div>
           <dt>Settled</dt>
           <dd>
@@ -308,11 +324,44 @@ export function App() {
   const latest = EVIDENCE.watchtower.latest;
   const okCount = latest.results.filter((r) => r.ok).length;
   const tamper = EVIDENCE.watchtower.tamperDemo;
-  const mw = EVIDENCE.merkleWithdraw;
   // Independent checks the tampered batch failed (8 in the v2 tamper demo:
   // file-vs-chain root, replayed root, leaves-recomputed root, all four
   // leaf proofs, decrypted payload).
   const tamperFailures = tamper?.results.find((r) => !r.ok)?.failures.length ?? 0;
+
+  // Full cycle in true chronological order: every step carries a
+  // timestamp, so the genesis cycle and the auto-credit cycle interleave
+  // correctly (deposit 0.3 → seed → batches 0–2 → user withdrawal →
+  // reverted attacks → deposit 0.1 → batch #3 → deployer withdrawal).
+  type CycleStep =
+    | { kind: "seed"; at: string }
+    | { kind: "deposit"; at: string; deposit: (typeof EVIDENCE.cycle.deposits)[number] }
+    | { kind: "settle"; at: string; batch: BatchSummary }
+    | { kind: "withdraw"; at: string; withdrawal: (typeof EVIDENCE.cycle.withdrawals)[number] }
+    | { kind: "revert"; at: string; revert: (typeof EVIDENCE.cycle.reverts)[number] }
+    | { kind: "forged"; at: string };
+  const cycleSteps: CycleStep[] = [
+    ...(EVIDENCE.cycle.seed ? [{ kind: "seed" as const, at: EVIDENCE.cycle.seed.at }] : []),
+    ...EVIDENCE.cycle.deposits.map((d) => ({ kind: "deposit" as const, at: d.at, deposit: d })),
+    ...EVIDENCE.batches.map((b) => ({ kind: "settle" as const, at: b.settledAt, batch: b })),
+    ...EVIDENCE.cycle.withdrawals.map((w) => ({
+      kind: "withdraw" as const,
+      at: w.at,
+      withdrawal: w,
+    })),
+    ...EVIDENCE.cycle.reverts.map((r) => ({ kind: "revert" as const, at: r.at, revert: r })),
+    { kind: "forged" as const, at: EVIDENCE.cycle.forged.at },
+  ].sort((a, b) => a.at.localeCompare(b.at));
+  // A deposit is auto-credited when some batch's deposits claim its tx.
+  const isAutoCredited = (tx: string) =>
+    EVIDENCE.batches.some((b) =>
+      b.deposits.some((d) => d.tx.toLowerCase() === tx.toLowerCase()),
+    );
+  // The only two withdrawers are the deployer and the independent user wallet.
+  const withdrawerLabel = (account: string | null) =>
+    account && account.toLowerCase() === EVIDENCE.deployer.toLowerCase()
+      ? "the deployer"
+      : "the independent user wallet";
 
   return (
     <div className="page">
@@ -322,7 +371,8 @@ export function App() {
         <p className="lede">
           A minimal post-quantum rollup: an off-chain sequencer batches transactions, signs each
           batch with ML-DSA-87, and settles it on a contract that verifies the signature on-chain
-          via the pqcVerify precompile. Batch payloads are sealed with ML-KEM-1024, withdrawals
+          via the pqcVerify precompile. L1 deposits flow into rollup balances automatically via
+          the deposit watcher. Batch payloads are sealed with ML-KEM-1024, withdrawals
           are proven with Merkle proofs against settled state roots — with no sequencer help —
           and a watchtower re-verifies every batch.
         </p>
@@ -398,92 +448,132 @@ export function App() {
 
       <section data-testid="full-cycle">
         <h2>Full cycle — deposit → batches → Merkle withdrawal → reverted attacks</h2>
-        <p>Every step below is a real transaction on the Diana testnet (17 Nov 2026).</p>
+        <p>
+          Every step below is a real transaction on the Diana testnet (17 Nov 2026), in
+          chronological order — the genesis cycle first, then the auto-credit cycle (deposit
+          0.1 QOR → batch #3 → deployer withdrawal).
+        </p>
         <ol className="cycle">
-          <li>
-            <strong>Seed state</strong> — operator-seeded genesis funding: deployer credited{" "}
-            {Number(EVIDENCE.cycle.seed?.amountUqor ?? "0").toLocaleString("en-US")} uqor in the
-            rollup state, backed by the 0.3 QOR L1 deposit below. L1 deposits are not
-            auto-credited — a documented demo gap (see THREAT_MODEL.md §4).
-          </li>
-          <li>
-            <strong>Deposit 0.3 QOR</strong> —{" "}
-            <HashLink hash={EVIDENCE.cycle.deposit.cosmosTx} label={shorten(EVIDENCE.cycle.deposit.tx)} />{" "}
-            · block {EVIDENCE.cycle.deposit.block.toLocaleString("en-US")} ·{" "}
-            {formatTime(EVIDENCE.cycle.deposit.at)}
-          </li>
-          <li>
-            <strong>Settle batch #0</strong> (1 tx) —{" "}
-            <HashLink hash={EVIDENCE.batches[0].cosmosTx} label={shorten(EVIDENCE.batches[0].submitTx)} />{" "}
-            · block {EVIDENCE.batches[0].block.toLocaleString("en-US")}
-          </li>
-          <li>
-            <strong>Settle batch #1</strong> (2 txs) —{" "}
-            <HashLink hash={EVIDENCE.batches[1].cosmosTx} label={shorten(EVIDENCE.batches[1].submitTx)} />{" "}
-            · block {EVIDENCE.batches[1].block.toLocaleString("en-US")}
-          </li>
-          <li>
-            <strong>Settle batch #2</strong> (1 tx) —{" "}
-            <HashLink hash={EVIDENCE.batches[2].cosmosTx} label={shorten(EVIDENCE.batches[2].submitTx)} />{" "}
-            · block {EVIDENCE.batches[2].block.toLocaleString("en-US")}
-          </li>
-          <li>
-            <strong>
-              Merkle-proof withdrawal — {uqorToQor(EVIDENCE.cycle.withdraw.amountUqor)} QOR, no
-              sequencer
-            </strong>{" "}
-            — the independent user wallet{" "}
-            {mw?.account ? (
-              <>
-                <a
-                  href={explorerAddress(mw.account)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mono"
-                >
-                  {shorten(mw.account)}
-                </a>{" "}
-              </>
-            ) : null}
-            proved its{" "}
-            {Number(mw?.amountUqor ?? EVIDENCE.cycle.withdraw.amountUqor).toLocaleString("en-US")}{" "}
-            uqor balance against batch #{mw?.batchId ?? "—"}&apos;s state root with a{" "}
-            {mw?.proofSteps ?? "—"}-element Merkle proof and withdrew directly from the contract.{" "}
-            <HashLink hash={EVIDENCE.cycle.withdraw.cosmosTx} label={shorten(EVIDENCE.cycle.withdraw.tx)} />{" "}
-            · block {EVIDENCE.cycle.withdraw.block.toLocaleString("en-US")}
-          </li>
-          {EVIDENCE.cycle.reverts.map((r) => (
-            <li className="revert" key={r.reason}>
-              <strong>
-                {r.reason === "double-withdraw"
-                  ? "Double-withdraw (attack demo) — REVERTED on-chain"
-                  : "Tampered proof (attack demo) — REVERTED on-chain"}
-              </strong>{" "}
-              —{" "}
-              {r.reason === "double-withdraw"
-                ? "the same Merkle-proof withdrawal sent again — the cumulative cap already covers the leaf balance. The contract rejected it"
-                : "a withdrawal with one flipped hex char in the proof — it no longer verifies against the state root. The contract rejected it"}{" "}
-              (<code>{r.error}</code>): receipt status <code>{r.receiptStatus}</code>
-              {r.withdrawnBefore !== null && r.withdrawnAfter !== null && (
-                <>
-                  , cumulative withdrawnAmount stayed at{" "}
-                  {Number(r.withdrawnAfter).toLocaleString("en-US")} uqor
-                </>
-              )}
-              .{" "}
-              <HashLink hash={r.cosmosTx} label={shorten(r.tx)} /> · block{" "}
-              {r.block.toLocaleString("en-US")}
-            </li>
-          ))}
-          <li className="revert">
-            <strong>Forged batch — REVERTED on-chain</strong> — a genuine ML-DSA-87 signature over
-            the WRONG digest, submitted by the sequencer itself. The contract rejected it (
-            <code>InvalidBatchSignature</code>): receipt status{" "}
-            <code>{EVIDENCE.cycle.forged.receiptStatus}</code>, batchCount stayed at{" "}
-            {EVIDENCE.cycle.forged.batchCountBefore} → {EVIDENCE.cycle.forged.batchCountAfter}.{" "}
-            <HashLink hash={EVIDENCE.cycle.forged.cosmosTx} label={shorten(EVIDENCE.cycle.forged.tx)} />{" "}
-            · block {EVIDENCE.cycle.forged.block.toLocaleString("en-US")}
-          </li>
+          {cycleSteps.map((step) => {
+            if (step.kind === "seed") {
+              return (
+                <li key="seed">
+                  <strong>Genesis funding</strong> — the{" "}
+                  {uqorToQor(EVIDENCE.cycle.seed?.amountUqor ?? "0")} QOR L1 deposit above was
+                  credited by hand into the rollup state before batch #0, before the deposit
+                  watcher existed. It is the one hand-credited deposit, recorded in{" "}
+                  <code>deployments/deposits.json</code> with status “genesis” so it is never
+                  credited twice; every later deposit flows in automatically via the watcher.
+                </li>
+              );
+            }
+            if (step.kind === "deposit") {
+              const d = step.deposit;
+              const auto = isAutoCredited(d.tx);
+              return (
+                <li key={`deposit-${d.tx}`}>
+                  <strong>
+                    Deposit {uqorToQor(d.amountUqor)} QOR{auto ? " (auto-credit cycle)" : ""}
+                  </strong>{" "}
+                  — <HashLink hash={d.cosmosTx} label={shorten(d.tx)} /> · block{" "}
+                  {d.block.toLocaleString("en-US")} · {formatTime(d.at)}
+                  {auto && (
+                    <> — picked up by the deposit watcher and credited by the next batch</>
+                  )}
+                </li>
+              );
+            }
+            if (step.kind === "settle") {
+              const b = step.batch;
+              const depositTotal = b.deposits.reduce((s, d) => s + BigInt(d.amountUqor), 0n);
+              return (
+                <li key={`settle-${b.batchId}`}>
+                  <strong>
+                    Settle batch #{b.batchId} ({b.txCount} tx{b.txCount === 1 ? "" : "s"}
+                    {b.deposits.length > 0 && (
+                      <>
+                        {" "}+ {b.deposits.length} deposit{b.deposits.length === 1 ? "" : "s"} of{" "}
+                        {Number(depositTotal).toLocaleString("en-US")} uqor, auto-credited
+                      </>
+                    )}
+                    )
+                  </strong>{" "}
+                  — <HashLink hash={b.cosmosTx} label={shorten(b.submitTx)} /> · block{" "}
+                  {b.block.toLocaleString("en-US")}
+                </li>
+              );
+            }
+            if (step.kind === "withdraw") {
+              const w = step.withdrawal;
+              return (
+                <li key={`withdraw-${w.tx}`}>
+                  <strong>
+                    Merkle-proof withdrawal — {uqorToQor(w.amountUqor)} QOR, no sequencer
+                  </strong>{" "}
+                  — {withdrawerLabel(w.account)}{" "}
+                  {w.account && (
+                    <>
+                      <a
+                        href={explorerAddress(w.account)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mono"
+                      >
+                        {shorten(w.account)}
+                      </a>{" "}
+                    </>
+                  )}
+                  proved its {Number(w.amountUqor).toLocaleString("en-US")} uqor balance
+                  against batch #{w.batchId ?? "—"}&apos;s state root with a{" "}
+                  {w.proofSteps ?? "—"}-element Merkle proof and withdrew directly from the
+                  contract.{" "}
+                  <HashLink hash={w.cosmosTx} label={shorten(w.tx)} /> · block{" "}
+                  {w.block.toLocaleString("en-US")}
+                </li>
+              );
+            }
+            if (step.kind === "revert") {
+              const r = step.revert;
+              return (
+                <li className="revert" key={r.reason}>
+                  <strong>
+                    {r.reason === "double-withdraw"
+                      ? "Double-withdraw (attack demo) — REVERTED on-chain"
+                      : "Tampered proof (attack demo) — REVERTED on-chain"}
+                  </strong>{" "}
+                  —{" "}
+                  {r.reason === "double-withdraw"
+                    ? "the same Merkle-proof withdrawal sent again — the cumulative cap already covers the leaf balance. The contract rejected it"
+                    : "a withdrawal with one flipped hex char in the proof — it no longer verifies against the state root. The contract rejected it"}{" "}
+                  (<code>{r.error}</code>): receipt status <code>{r.receiptStatus}</code>
+                  {r.withdrawnBefore !== null && r.withdrawnAfter !== null && (
+                    <>
+                      , cumulative withdrawnAmount stayed at{" "}
+                      {Number(r.withdrawnAfter).toLocaleString("en-US")} uqor
+                    </>
+                  )}
+                  .{" "}
+                  <HashLink hash={r.cosmosTx} label={shorten(r.tx)} /> · block{" "}
+                  {r.block.toLocaleString("en-US")}
+                </li>
+              );
+            }
+            return (
+              <li className="revert" key="forged">
+                <strong>Forged batch — REVERTED on-chain</strong> — a genuine ML-DSA-87 signature
+                over the WRONG digest, submitted by the sequencer itself. The contract rejected
+                it (<code>InvalidBatchSignature</code>): receipt status{" "}
+                <code>{EVIDENCE.cycle.forged.receiptStatus}</code>, batchCount stayed at{" "}
+                {EVIDENCE.cycle.forged.batchCountBefore} → {EVIDENCE.cycle.forged.batchCountAfter}
+                .{" "}
+                <HashLink
+                  hash={EVIDENCE.cycle.forged.cosmosTx}
+                  label={shorten(EVIDENCE.cycle.forged.tx)}
+                />{" "}
+                · block {EVIDENCE.cycle.forged.block.toLocaleString("en-US")}
+              </li>
+            );
+          })}
         </ol>
         <h3>Final rollup balances</h3>
         <table className="balances">
@@ -503,7 +593,7 @@ export function App() {
               </tr>
             ))}
             <tr className="total">
-              <td>Total (conserved from the 0.3 QOR deposit)</td>
+              <td>Total (conserved from the {uqorToQor(t.totalDepositedUqor)} QOR deposited)</td>
               <td>
                 {Object.values(EVIDENCE.balances)
                   .reduce((a, b) => a + BigInt(b), 0n)
@@ -570,7 +660,10 @@ export function App() {
                     >
                       {EVIDENCE.merkleWithdraw.account}
                     </a>{" "}
-                    (independent user wallet — not the sequencer)
+                    {EVIDENCE.merkleWithdraw.account.toLowerCase() ===
+                    EVIDENCE.deployer.toLowerCase()
+                      ? "(the deployer — withdrawing its own leaf; the withdrawal path makes no sequencer call)"
+                      : "(independent user wallet — not the sequencer)"}
                   </dd>
                 </div>
               )}
@@ -649,8 +742,10 @@ export function App() {
         <p>
           <code>npm run watchtower</code> re-verifies every batch off-chain: the ML-DSA-87
           signature against the sequencer&apos;s registered key, the state replay, the receipt
-          hash, the ML-KEM decrypt check, and the genesis-funding cross-check against the
-          contract&apos;s cumulative totalDeposited.
+          hash, the ML-KEM decrypt check, the genesis-funding cross-check against the
+          contract&apos;s cumulative totalDeposited, and the deposit credit check — every
+          credited deposit matched against the on-chain <code>Deposited</code> logs, with the
+          credited total checked against totalDeposited in aggregate and per depositor.
         </p>
         <div className={`watchtower-status ${latest.allOk ? "ok" : "bad"}`}>
           <strong>

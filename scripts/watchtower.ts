@@ -18,6 +18,18 @@
  *  (d) when ../kem-key.json exists, the sealed blob decrypts to a payload
  *      matching the batch file; otherwise the decrypt check is SKIPPED and
  *      the other checks still run.
+ *  (e) every L1 deposit a batch file claims was credited is matched
+ *      against the contract's `Deposited` event logs on-chain — same
+ *      transaction, same depositor, same amount — and no deposit is
+ *      claimed by two batches. A batch cannot invent a deposit the
+ *      chain never saw, and cannot credit the same deposit twice.
+ *  (f) the credited amounts never exceed the L1 deposits supporting
+ *      them: every settled/genesis record in deployments/deposits.json
+ *      matches an on-chain log, the credited total stays within the
+ *      contract's cumulative totalDeposited (in aggregate AND per
+ *      depositor), and the watcher ledger agrees with the batch files
+ *      (every settled record is claimed by the batch it names).
+ *      A credit larger than its supporting L1 deposit fails here.
  *
  * Prints one OK/FAIL line per batch naming which check failed, and exits 0
  * only if every batch passes. Read-only: it never sends a transaction.
@@ -35,7 +47,7 @@
  */
 import { createEvmClient, readContract } from "@qorechain/evm";
 import { fetchPqcStatus, pqcStatusPublicKey } from "@qorechain/sdk";
-import { hexToBytes, type Address, type Hex } from "viem";
+import { hexToBytes, parseAbi, type Address, type Hex } from "viem";
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -46,15 +58,31 @@ import {
   type BatchFile,
   type OnChainBatch,
 } from "../src/lib/rollup";
+import {
+  checkDepositLedgerConsistency,
+  matchDepositClaims,
+  normalizeDepositedLogs,
+  verifyDepositTotals,
+  type DepositedLogInput,
+  type DepositsFile,
+} from "../src/lib/deposits";
 
 const TESTNET_CHAIN_ID = 9800;
 const TESTNET_REST = "https://api-testnet.qore.host";
 const SEQUENCER_COSMOS = "qor1q9q2q4hwxl2jgzcrjlkd7y68m2qwxwul0nheda";
+/** getLogs range per request (keeps RPC responses small). */
+const SCAN_CHUNK_BLOCKS = 2000n;
+
+const DEPOSITED_EVENT = parseAbi([
+  "event Deposited(address indexed depositor, uint256 amount)",
+])[0];
 
 // npm scripts run with the working directory at the package root.
 const ROOT = process.cwd();
 const DEPLOYMENTS = path.resolve(ROOT, "deployments");
 const BATCHES_DIR = path.resolve(DEPLOYMENTS, "batches");
+/** The deposit watcher's persisted state (the ledger check (f) needs it). */
+const DEPOSITS_PATH = path.resolve(DEPLOYMENTS, "deposits.json");
 /** The verification log: one entry per watchtower run. */
 const WATCHTOWER_LOG_PATH = path.resolve(DEPLOYMENTS, "watchtower-log.json");
 /** OUTSIDE the repo (mode 600). Absent => decrypt check is skipped. */
@@ -89,6 +117,7 @@ async function main(): Promise<void> {
     );
   }
   const { contract } = readJson<{ contract: Address }>(deploymentPath);
+  const deployBlock = readJson<{ deployBlock: number }>(deploymentPath).deployBlock;
   const artifactPath = path.resolve(
     ROOT,
     "artifacts",
@@ -169,6 +198,15 @@ async function main(): Promise<void> {
   let prevNonces = new Map<Address, number>();
   let allOk = true;
   const results: Array<{ batchId: number; ok: boolean; failures: string[] }> = [];
+  // L1 deposits claimed by the batch files, for the check (e) cross-check
+  // against the on-chain `Deposited` logs after the loop.
+  const claimedDeposits: Array<{
+    batchId: number;
+    depositor: string;
+    amountUqor: string;
+    tx: string;
+    block: number;
+  }> = [];
 
   for (let batchId = 0; batchId < batchCount; batchId++) {
     const batchPath = path.resolve(BATCHES_DIR, `batch-${batchId}.json`);
@@ -203,6 +241,15 @@ async function main(): Promise<void> {
       break;
     }
     const batch = readJson<BatchFile>(batchPath);
+    for (const d of batch.deposits ?? []) {
+      claimedDeposits.push({
+        batchId,
+        depositor: d.depositor,
+        amountUqor: d.amountUqor,
+        tx: d.tx,
+        block: d.block,
+      });
+    }
 
     // Replay pre-state: the batch file's own pre-state when it carries one
     // (self-contained replay), else the chained pre-state from the previous
@@ -278,6 +325,135 @@ async function main(): Promise<void> {
     prevStateRoot = batch.stateRoot;
   }
 
+  // Deposit verification — checks (e) and (f). (e) every deposit a batch
+  // file claims matches a real `Deposited` event on-chain (same tx,
+  // depositor, amount and block), and no deposit is claimed twice. (f)
+  // the credited amounts never exceed the L1 deposits supporting them:
+  // every settled/genesis record in deployments/deposits.json matches an
+  // on-chain log, the credited total stays within totalDeposited (in
+  // aggregate and per depositor), and the watcher ledger agrees with
+  // the batch files. The genesis funding is NOT claimed by any batch
+  // file (it predates the watcher); it is checked here as a
+  // deposits.json record, and in the batch-0 pre-state check above.
+  const depositChecks: { checked: boolean; ok: boolean; failures: string[] } = {
+    checked: false,
+    ok: true,
+    failures: [],
+  };
+  const hasDepositsFile = fs.existsSync(DEPOSITS_PATH);
+  if (claimedDeposits.length > 0 || hasDepositsFile) {
+    depositChecks.checked = true;
+    console.log(
+      `\ndeposit verification: ${claimedDeposits.length} deposit(s) claimed by batch files`,
+    );
+    const latestBlock = await client.publicClient.getBlockNumber();
+    const rawLogs: DepositedLogInput[] = [];
+    for (
+      let start = BigInt(deployBlock);
+      start <= latestBlock;
+      start += SCAN_CHUNK_BLOCKS
+    ) {
+      const end = start + SCAN_CHUNK_BLOCKS - 1n > latestBlock ? latestBlock : start + SCAN_CHUNK_BLOCKS - 1n;
+      rawLogs.push(
+        ...(await client.publicClient.getLogs({
+          address: contract,
+          event: DEPOSITED_EVENT,
+          fromBlock: start,
+          toBlock: end,
+        })),
+      );
+    }
+    const logs = normalizeDepositedLogs(rawLogs);
+    console.log(
+      `deposit verification: ${logs.length} Deposited event(s) on-chain, totalDeposited ${totalDepositedUqor} uqor`,
+    );
+
+    // (e) batch claims against the logs; failures attach to the claiming batch.
+    const claimFailures = matchDepositClaims(
+      claimedDeposits.map((c) => ({
+        depositor: c.depositor,
+        amountUqor: c.amountUqor,
+        tx: c.tx,
+        block: c.block,
+        source: `batch #${c.batchId}`,
+        batchId: c.batchId,
+      })),
+      logs,
+    );
+    for (const f of claimFailures) {
+      allOk = false;
+      depositChecks.ok = false;
+      depositChecks.failures.push(f.message);
+      console.log(`batch ${f.claim.batchId}: FAIL — ${f.message}`);
+      const result = results.find((r) => r.batchId === f.claim.batchId);
+      if (result) {
+        result.ok = false;
+        result.failures.push(f.message);
+      }
+    }
+    if (claimFailures.length === 0 && claimedDeposits.length > 0) {
+      console.log("deposit cross-check: OK — every claimed deposit matches an on-chain event");
+    }
+
+    // (f) the watcher ledger: records, totals, and ledger agreement.
+    // (A batch claim and its deposits.json record are two views of ONE
+    // credit backed by the same log, so the two pools are matched
+    // separately; the consistency check below ties them together.)
+    if (hasDepositsFile) {
+      const depositsFile = readJson<DepositsFile>(DEPOSITS_PATH);
+      const creditedRecords = depositsFile.deposits.filter(
+        (d) => d.status === "settled" || d.status === "genesis",
+      );
+      const ledgerFailures: string[] = [];
+      for (const f of matchDepositClaims(
+        creditedRecords.map((d) => ({
+          depositor: d.depositor,
+          amountUqor: d.amountUqor,
+          tx: d.tx,
+          block: d.block,
+          logIndex: d.logIndex,
+          source: `deposits.json (${d.status})`,
+        })),
+        logs,
+      )) {
+        ledgerFailures.push(f.message);
+      }
+      ledgerFailures.push(
+        ...verifyDepositTotals(
+          creditedRecords.map((d) => ({
+            depositor: d.depositor,
+            amountUqor: d.amountUqor,
+          })),
+          logs,
+          totalDepositedUqor,
+        ),
+      );
+      ledgerFailures.push(
+        ...checkDepositLedgerConsistency(depositsFile.deposits, claimedDeposits),
+      );
+      const creditedTotal = creditedRecords.reduce(
+        (sum, d) => sum + BigInt(d.amountUqor),
+        0n,
+      );
+      if (ledgerFailures.length === 0) {
+        console.log(
+          `deposit credit check: OK — ${creditedRecords.length} credited deposit(s), ${creditedTotal} uqor, within totalDeposited ${totalDepositedUqor} uqor; ledger agrees with the batch files`,
+        );
+      } else {
+        for (const msg of ledgerFailures) {
+          allOk = false;
+          depositChecks.ok = false;
+          depositChecks.failures.push(msg);
+          console.log(`deposit credit check: FAIL — ${msg}`);
+        }
+      }
+    } else {
+      console.log(
+        "deposit credit check SKIPPED (no deployments/deposits.json — the ledger checks need the watcher state)",
+      );
+    }
+  }
+
   console.log(allOk ? "\nWatchtower: ALL BATCHES OK" : "\nWatchtower: FAILURES FOUND (see above)");
   process.exitCode = allOk ? 0 : 1;
 
@@ -288,6 +464,7 @@ async function main(): Promise<void> {
     chainId,
     batchCount,
     decryptCheck: kemSecretKey ? "enabled" : "skipped (no KEM key)",
+    depositChecks,
     results,
     allOk,
   };

@@ -15,10 +15,17 @@
  *   src/lib/merkle.ts. Any account can prove its balance against a
  *   settled root with a Merkle proof and withdraw directly from the
  *   contract — no sequencer help (contracts/QoreRollup.sol `withdraw`).
- * - Balances live off-chain in deployments/state.json. L1 deposits are
- *   recorded by the contract (deposits mapping) but this demo does NOT
- *   automatically credit them into rollup balances: the operator seeds
- *   state.json. A production rollup would credit deposits on-chain.
+ * - Balances live off-chain in deployments/state.json. L1 deposits ARE
+ *   credited into rollup balances automatically: the deposit watcher
+ *   (scripts/deposit-watcher.ts) reads `Deposited` events from the
+ *   settlement contract, records them in deployments/deposits.json, and
+ *   the sequencer applies the pending ones into the next batch's state
+ *   transition (applyDeposits, below) — so a deposit's credit is part of
+ *   the batch the watchtower replays, not a side channel. The genesis
+ *   funding (the 0.3 QOR deposit credited before batch #0) predates the
+ *   watcher and was seeded by hand; it is recorded in
+ *   deployments/deposits.json with status "genesis" so it is never
+ *   credited twice.
  * - Nonces start at 0 per account and increment by exactly 1 per tx.
  *   The nonce is part of the leaf, so a leaf proves (balance, nonce)
  *   together — a stale leaf (old nonce) cannot be replayed after the
@@ -29,6 +36,7 @@ import {
   concat,
   encodePacked,
   hexToBytes,
+  isAddress,
   keccak256,
   stringToHex,
   type Address,
@@ -75,6 +83,26 @@ export function rollupTxFromJson(json: RollupTxJson): RollupTx {
     amount: BigInt(json.amount),
     nonce: json.nonce,
   };
+}
+
+/**
+ * One L1 deposit credited by a batch, as stored in the batch file.
+ * The deposit watcher (scripts/deposit-watcher.ts) finds these on-chain
+ * (`Deposited` events); the sequencer applies them into the batch's
+ * state transition before the batch's transactions. `tx` + `block`
+ * identify the deposit on-chain — the watchtower matches every batch
+ * deposit against the contract's event logs, so a batch cannot invent
+ * a deposit the chain never saw.
+ */
+export interface BatchDepositJson {
+  /** Depositor address (checksummed). */
+  depositor: Address;
+  /** Amount in uqor, as a decimal string. */
+  amountUqor: string;
+  /** EVM transaction hash of the deposit. */
+  tx: Hex;
+  /** Block the deposit was mined in. */
+  block: number;
 }
 
 /**
@@ -193,6 +221,41 @@ export function applyTxs(
 }
 
 /**
+ * Apply L1 deposit credits to a balance set, returning the new balances.
+ * Deposits mint rollup funds: they add to the depositor's balance and do
+ * NOT touch nonces (a deposit is not a transaction — it has no nonce to
+ * consume). Throws on a malformed deposit (invalid address, non-numeric
+ * or non-positive amount) so a corrupt deposits file fails loudly
+ * instead of crediting garbage. The input map is not mutated.
+ */
+export function applyDeposits(
+  prevBalances: Map<Address, bigint>,
+  deposits: BatchDepositJson[],
+): Map<Address, bigint> {
+  const balances = new Map<Address, bigint>();
+  for (const [addr, bal] of prevBalances) {
+    balances.set(addr.toLowerCase() as Address, bal);
+  }
+  for (const d of deposits) {
+    if (!isAddress(d.depositor)) {
+      throw new Error(`invalid depositor address in batch deposit: ${String(d.depositor)}`);
+    }
+    let amount: bigint;
+    try {
+      amount = BigInt(d.amountUqor);
+    } catch {
+      throw new Error(`invalid amount in batch deposit for ${d.depositor}: ${String(d.amountUqor)}`);
+    }
+    if (amount <= 0n) {
+      throw new Error(`non-positive amount in batch deposit for ${d.depositor}: ${amount}`);
+    }
+    const addr = d.depositor.toLowerCase() as Address;
+    balances.set(addr, (balances.get(addr) ?? 0n) + amount);
+  }
+  return balances;
+}
+
+/**
  * The digest the sequencer signs for a batch. MUST match the contract's
  * batchDigest exactly:
  * keccak256(abi.encodePacked("QoreRollup.batch", chainid, contract,
@@ -262,6 +325,14 @@ export interface BatchPayload {
 export interface BatchFile {
   batchId: number;
   txs: RollupTxJson[];
+  /**
+   * L1 deposits credited by this batch (empty/absent for batches 0–2,
+   * which predate the deposit watcher). Applied to the pre-batch
+   * balances BEFORE the batch's transactions, in chain order — the
+   * watchtower replays them the same way, and matches each one against
+   * the contract's `Deposited` event logs.
+   */
+  deposits?: BatchDepositJson[];
   prevStateRoot: Hex;
   /** The post-batch Merkle state root (see src/lib/merkle.ts). */
   stateRoot: Hex;
@@ -348,8 +419,9 @@ function canonicalTxs(txs: RollupTxJson[]): string {
  *  (a) the ML-DSA-87 signature verifies against the sequencer's REGISTERED
  *      public key over the recomputed batch digest;
  *  (b) the tx commitment, the encrypted-data hash and the state transition
- *      recompute from the batch file and match BOTH the batch file and the
- *      on-chain record;
+ *      (L1 deposit credits first, then the transactions) recompute from
+ *      the batch file and match BOTH the batch file and the on-chain
+ *      record;
  *  (b4) the Merkle state tree: the batch file's leaves recompute to the
  *      file's stateRoot AND to the on-chain root, every leaf's hash
  *      recomputes from its (account, balance, nonce), the leaves match
@@ -430,7 +502,10 @@ export function verifyBatch(
   let replayedBalances: Map<Address, bigint> | undefined;
   let replayedNonces: Map<Address, number> | undefined;
   try {
-    const replayed = applyTxs(batch.prevStateRoot, ctx.prevBalances, txs, ctx.prevNonces);
+    // Deposits credited by this batch apply to the pre-batch balances
+    // BEFORE the transactions (same order the sequencer builds with).
+    const fundedBalances = applyDeposits(ctx.prevBalances, batch.deposits ?? []);
+    const replayed = applyTxs(batch.prevStateRoot, fundedBalances, txs, ctx.prevNonces);
     replayedBalances = replayed.newBalances;
     replayedNonces = replayed.newNonces;
     if (lower(replayed.newStateRoot) !== lower(batch.stateRoot)) {

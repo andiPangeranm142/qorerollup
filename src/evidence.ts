@@ -13,6 +13,13 @@ export type BatchTx = {
   nonce: number;
 };
 
+export type BatchDeposit = {
+  depositor: string;
+  amountUqor: string;
+  tx: string;
+  block: number;
+};
+
 export type BatchSummary = {
   batchId: number;
   txCount: number;
@@ -30,6 +37,7 @@ export type BatchSummary = {
   kemCiphertextBytes: number;
   sealedBlobBytes: number;
   txs: BatchTx[];
+  deposits: BatchDeposit[];
   balancesAfter: Record<string, string>;
 };
 
@@ -93,6 +101,7 @@ export type Evidence = {
   cycle: {
     seed: { at: string; account: string; amountUqor: string; note: string } | null;
     deposit: { at: string; amountUqor: string; tx: string; cosmosTx: string; block: number };
+    deposits: { at: string; amountUqor: string; tx: string; cosmosTx: string; block: number }[];
     withdraw: {
       at: string;
       amountUqor: string;
@@ -101,6 +110,17 @@ export type Evidence = {
       cosmosTx: string;
       block: number;
     };
+    withdrawals: {
+      at: string;
+      amountUqor: string;
+      account: string | null;
+      batchId: number | null;
+      leaf: string | null;
+      proofSteps: number | null;
+      tx: string;
+      cosmosTx: string;
+      block: number;
+    }[];
     reverts: RevertEvidence[];
     forged: {
       at: string;
@@ -121,6 +141,7 @@ export type Evidence = {
       batchCount: number;
       decryptCheck: string;
       results: WatchtowerResult[];
+      depositChecks: { checked: boolean; ok: boolean; failures: string[] } | null;
     };
     tamperDemo: { at: string; allOk: boolean; results: WatchtowerResult[]; tampered: string } | null;
   };
@@ -142,15 +163,15 @@ export const EVIDENCE: Evidence = {
   "explorerContract": "https://explore.qore.network/address/0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
   "explorerDeployTx": "https://explore.qore.network/tx/5DFEEF53AEFBD5F23FA3DA9DC6F47D7168B5A91DEB75843211CA4470E4713510",
   "totals": {
-    "batchCount": 3,
-    "totalDepositedUqor": "300000",
-    "totalWithdrawnUqor": "50000",
-    "deployerDepositUqor": "300000",
-    "finalStateRoot": "0x0098795f556cd7dd0034c5b374c4a1c7c9b0984bbc31d08aeb1c74b1bcd152ff"
+    "batchCount": 4,
+    "totalDepositedUqor": "400000",
+    "totalWithdrawnUqor": "350000",
+    "deployerDepositUqor": "400000",
+    "finalStateRoot": "0x15841ef61972d5ec7fda90d932592ed2d6ac7a45b967c84099898342cd01dc65"
   },
   "balances": {
-    "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "210000",
-    "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "50000",
+    "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
+    "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "60000",
     "0x1111111111111111111111111111111111111111": "15000",
     "0x2222222222222222222222222222222222222222": "10000",
     "0x3333333333333333333333333333333333333333": "15000"
@@ -180,6 +201,7 @@ export const EVIDENCE: Evidence = {
           "nonce": 0
         }
       ],
+      "deposits": [],
       "balancesAfter": {
         "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "250000",
         "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "50000"
@@ -215,6 +237,7 @@ export const EVIDENCE: Evidence = {
           "nonce": 0
         }
       ],
+      "deposits": [],
       "balancesAfter": {
         "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "225000",
         "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "50000",
@@ -246,9 +269,50 @@ export const EVIDENCE: Evidence = {
           "nonce": 2
         }
       ],
+      "deposits": [],
       "balancesAfter": {
         "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "210000",
         "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "50000",
+        "0x1111111111111111111111111111111111111111": "15000",
+        "0x2222222222222222222222222222222222222222": "10000",
+        "0x3333333333333333333333333333333333333333": "15000"
+      }
+    },
+    {
+      "batchId": 3,
+      "txCount": 1,
+      "stateRoot": "0x15841ef61972d5ec7fda90d932592ed2d6ac7a45b967c84099898342cd01dc65",
+      "prevStateRoot": "0x0098795f556cd7dd0034c5b374c4a1c7c9b0984bbc31d08aeb1c74b1bcd152ff",
+      "txDataCommitment": "0x79383fa223f2e66f9288ef91f2d6b1a09ddf08430d2e309f30b6ee6f481ed0ca",
+      "encryptedDataHash": "0x541283c1f344c17a7be456e904f1c9546cc536e8085684490cece2a0986cc698",
+      "digest": "0x7a7e1d54bebe7a0b91457950c044fd6257f202a635409142ea24df667609801e",
+      "receiptHash": "0x0b91fea6a54b7a9c532d9c0d3910f4c87cdba491a813462f1dadb6a4e5c04b27",
+      "submitTx": "0xb0d9842996e735efe3d842fae71309625bd75ceab8c61628224c0f12e560391c",
+      "cosmosTx": "E0E7F28A654A162FA5822356C25FD3639A24775367A7E928A12C256508EFA818",
+      "block": 10252704,
+      "settledAt": "2026-11-17T11:34:03.607Z",
+      "signatureBytes": 4627,
+      "kemCiphertextBytes": 1568,
+      "sealedBlobBytes": 349,
+      "txs": [
+        {
+          "from": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "to": "0x29cb5ABD4309b5A83A6A66e95CbdA1d88F060d4F",
+          "amountUqor": "10000",
+          "nonce": 3
+        }
+      ],
+      "deposits": [
+        {
+          "depositor": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "amountUqor": "100000",
+          "tx": "0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e",
+          "block": 10252674
+        }
+      ],
+      "balancesAfter": {
+        "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
+        "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "60000",
         "0x1111111111111111111111111111111111111111": "15000",
         "0x2222222222222222222222222222222222222222": "10000",
         "0x3333333333333333333333333333333333333333": "15000"
@@ -260,7 +324,7 @@ export const EVIDENCE: Evidence = {
       "at": "2026-11-17T10:32:59.757Z",
       "account": "0x0140a056ee37d5240b0397ecdf1347da80e33b9f",
       "amountUqor": "300000",
-      "note": "Operator-seeded genesis rollup funding: deployer credited 300000 uqor in deployments/state.json, backed by the 0.3 QOR L1 deposit (see deposit step). L1 deposits are NOT auto-credited (documented demo gap)."
+      "note": "Genesis funding: the 0.3 QOR L1 deposit was credited by hand into deployments/state.json before batch #0 — before the deposit watcher existed. Recorded in deployments/deposits.json with status \"genesis\"; every later deposit flows in automatically via the watcher."
     },
     "deposit": {
       "at": "2026-11-17T10:32:56.571Z",
@@ -269,6 +333,22 @@ export const EVIDENCE: Evidence = {
       "cosmosTx": "2BA3C0DEEE93538EBE431F378F5DD90BD90DF594CBC87F75182D800AED71B6CE",
       "block": 10250139
     },
+    "deposits": [
+      {
+        "at": "2026-11-17T10:32:56.571Z",
+        "amountUqor": "300000",
+        "tx": "0x0a39abcbd8307280e19f3e035bbbde29a36804b865da95f74d6fac4dd73ee2a5",
+        "cosmosTx": "2BA3C0DEEE93538EBE431F378F5DD90BD90DF594CBC87F75182D800AED71B6CE",
+        "block": 10250139
+      },
+      {
+        "at": "2026-11-17T11:33:21.289Z",
+        "amountUqor": "100000",
+        "tx": "0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e",
+        "cosmosTx": "D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9",
+        "block": 10252674
+      }
+    ],
     "withdraw": {
       "at": "2026-11-17T10:34:18.867Z",
       "amountUqor": "50000",
@@ -277,6 +357,30 @@ export const EVIDENCE: Evidence = {
       "cosmosTx": "681E9D192A38ABB9D3F13DD1091015C07C01DB7B863E3295D825D032EF4591DD",
       "block": 10250197
     },
+    "withdrawals": [
+      {
+        "at": "2026-11-17T10:34:18.867Z",
+        "amountUqor": "50000",
+        "account": "0x29cb5ABD4309b5A83A6A66e95CbdA1d88F060d4F",
+        "batchId": 2,
+        "leaf": "0x7bcddcd273781c0e86e8c2ce5c0b4d70fc3a9ef1f98209c4a41a7ee6dc731e2a",
+        "proofSteps": 3,
+        "tx": "0xaa57f3b235d317dc8d2caf2f2444ff0b27822145042490484dbda2bc8c33fc14",
+        "cosmosTx": "681E9D192A38ABB9D3F13DD1091015C07C01DB7B863E3295D825D032EF4591DD",
+        "block": 10250197
+      },
+      {
+        "at": "2026-11-17T11:43:09.701Z",
+        "amountUqor": "300000",
+        "account": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+        "batchId": 3,
+        "leaf": "0x99d4379e8d1bcd9e4d534759300f10260d103b9dd9d31b54c2551d981a30ba0c",
+        "proofSteps": 3,
+        "tx": "0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91",
+        "cosmosTx": "B11F3986401D66598A1DF23CCEF90E7FA807A385C3D2F406AC96F8DA626640FB",
+        "block": 10253087
+      }
+    ],
     "reverts": [
       {
         "at": "2026-11-17T10:34:27.000Z",
@@ -317,9 +421,9 @@ export const EVIDENCE: Evidence = {
   },
   "watchtower": {
     "latest": {
-      "at": "2026-11-17T10:39:59.556Z",
+      "at": "2026-11-17T11:43:44.255Z",
       "allOk": true,
-      "batchCount": 3,
+      "batchCount": 4,
       "decryptCheck": "enabled",
       "results": [
         {
@@ -336,8 +440,18 @@ export const EVIDENCE: Evidence = {
           "batchId": 2,
           "ok": true,
           "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
         }
-      ]
+      ],
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      }
     },
     "tamperDemo": {
       "at": "2026-11-17T10:35:13.861Z",
@@ -378,23 +492,23 @@ export const EVIDENCE: Evidence = {
     "publicKeyPrefix": "0x56a1a674b07c58644adc63bb53e2c144"
   },
   "merkleWithdraw": {
-    "at": "2026-11-17T10:34:18.869Z",
-    "batchId": 2,
-    "account": "0x29cb5ABD4309b5A83A6A66e95CbdA1d88F060d4F",
-    "stateRoot": "0x0098795f556cd7dd0034c5b374c4a1c7c9b0984bbc31d08aeb1c74b1bcd152ff",
-    "leaf": "0x7bcddcd273781c0e86e8c2ce5c0b4d70fc3a9ef1f98209c4a41a7ee6dc731e2a",
+    "at": "2026-11-17T11:43:09.703Z",
+    "batchId": 3,
+    "account": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+    "stateRoot": "0x15841ef61972d5ec7fda90d932592ed2d6ac7a45b967c84099898342cd01dc65",
+    "leaf": "0x99d4379e8d1bcd9e4d534759300f10260d103b9dd9d31b54c2551d981a30ba0c",
     "proof": [
-      "0x1c1a6df03be0534d8a018f4d0109711615e9f114546669b33649b007c3837d46",
-      "0xcd7079ed2a92e27149c136dfdb1d81a291ce04f2db79ed0339ff302e023b897a",
+      "0x47a01dd6ab07f0a1662458e1ab78f7b17c6a65331672c0fe3364ace15da444d4",
+      "0x62fb267da2aad5b9ffec51ff240cc0ef12b907b6d2e5f636920e28e11dd9f7cc",
       "0x4f9f8d354ffd02607dd8c0c6a5fff144a373f2e5588b32d50185af80f07bcb90"
     ],
     "proofSteps": 3,
-    "amountUqor": "50000",
+    "amountUqor": "300000",
     "withdrawnBefore": "0",
-    "withdrawnAfter": "50000",
-    "tx": "0xaa57f3b235d317dc8d2caf2f2444ff0b27822145042490484dbda2bc8c33fc14",
-    "cosmosTx": "681E9D192A38ABB9D3F13DD1091015C07C01DB7B863E3295D825D032EF4591DD",
-    "block": 10250197,
-    "note": "Independent user wallet withdrawing with a Merkle proof against a settled batch state root — no sequencer involvement."
+    "withdrawnAfter": "300000",
+    "tx": "0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91",
+    "cosmosTx": "B11F3986401D66598A1DF23CCEF90E7FA807A385C3D2F406AC96F8DA626640FB",
+    "block": 10253087,
+    "note": "Merkle-proof withdrawal against a settled batch state root — no sequencer involvement."
   }
 };
