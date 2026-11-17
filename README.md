@@ -290,6 +290,9 @@ ALL batch data were withheld, a user could not construct a proof.
 
 ## Run it yourself (testnet only)
 
+Outsider? Follow [OUTSIDER_TEST.md](OUTSIDER_TEST.md) to deposit and
+withdraw with your own wallet — no team keys involved.
+
 Prerequisites: Node.js 20+, a funded Diana testnet account in `../.env`
 (`QORE_MNEMONIC`, `QORE_EVM_PRIVATE_KEY`, `QORE_EVM_RPC_URL` —
 mode 600, outside the repo; see `.env.example`). Never commit real keys.
