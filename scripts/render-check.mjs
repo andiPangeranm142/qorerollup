@@ -94,6 +94,12 @@ const batchCountValue = await statValue("batch-count");
 const depositedValue = await statValue("total-deposited");
 const withdrawnValue = await statValue("total-withdrawn");
 const deployerDepositValue = await statValue("deployer-deposit");
+const contractBalanceValue = await statValue("contract-balance");
+// Every /tx/ link must point at the explorer with a Cosmos hash.
+const txHrefs = await page.$$eval('a[href*="/tx/"]', (els) => els.map((a) => a.href));
+const batch3DepositCosmosLink = await page
+  .locator('[data-testid="batch-3"] a[href*="D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9"]')
+  .count();
 const checks = {
   "title QoreRollup": text.includes("QoreRollup"),
   "contract address v2": text.includes("0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708"),
@@ -104,6 +110,27 @@ const checks = {
   "total deposited 0.4 QOR": depositedValue === "0.4 QOR",
   "total withdrawn 0.35 QOR": withdrawnValue === "0.35 QOR",
   "deployer deposit 0.4 QOR": deployerDepositValue === "0.4 QOR",
+  "contract balance 0.05 QOR": contractBalanceValue === "0.05 QOR",
+  "150 Hardhat tests": text.includes("150 Hardhat tests"),
+  "no stale 100 tests": !text.includes("100 tests"),
+  "explorer mainnet note": text.includes("defaults to Mainnet") && text.includes("switch to Testnet"),
+  "all tx links use cosmos hashes":
+    txHrefs.length > 0 &&
+    txHrefs.every((h) => /^https:\/\/explore\.qore\.network\/tx\/[0-9A-F]{64}$/.test(h)),
+  "auto-deposit section": text.includes("Auto-deposit path"),
+  "auto-deposit deposit #2": text.includes("Deposit #2 arrived on L1"),
+  "auto-deposit deposit cosmos hash linked": txHrefs.includes(
+    "https://explore.qore.network/tx/D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9",
+  ),
+  "auto-deposit batch #3 settle cosmos hash linked": txHrefs.includes(
+    "https://explore.qore.network/tx/E0E7F28A654A162FA5822356C25FD3639A24775367A7E928A12C256508EFA818",
+  ),
+  "auto-deposit balance change 0.21 to 0.3 QOR": text.includes("0.21 QOR to 0.3 QOR"),
+  "auto-deposit deposit-credit check OK":
+    text.includes("Deposit-credit check OK") &&
+    text.includes("never exceed supporting L1 deposits"),
+  "batch #3 card deposit link is cosmos (not EVM)": batch3DepositCosmosLink > 0,
+  "watchtower latest batch #3 OK": text.includes("Latest batch #3: ✓ OK"),
   "watchtower ALL BATCHES OK": text.includes("ALL BATCHES OK"),
   "watchtower 4/4": text.includes("4/4 batches verified"),
   "tamper-catch demo": text.includes("Tamper-catch demo"),

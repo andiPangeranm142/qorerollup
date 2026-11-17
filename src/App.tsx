@@ -271,7 +271,11 @@ function BatchCard({ batch, liveBatch }: { batch: BatchSummary; liveBatch?: Live
                   <li key={d.tx} className="mono">
                     +{Number(d.amountUqor).toLocaleString("en-US")} uqor ({uqorToQor(d.amountUqor)}{" "}
                     QOR) to {shorten(d.depositor, 8, 6)} · deposit tx{" "}
-                    <HashLink hash={d.tx} /> · block {d.block.toLocaleString("en-US")}
+                    {/* Explorer links use the Cosmos hash, not the EVM hash. */}
+                    <HashLink hash={d.cosmosTx ?? d.tx} label={`EVM ${shorten(d.tx)}`} /> · block{" "}
+                    <a href={explorerBlock(d.block)} target="_blank" rel="noreferrer">
+                      {d.block.toLocaleString("en-US")}
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -314,6 +318,10 @@ export function App() {
   const deployerDeposit = live
     ? weiToQor(live.deployerDeposit)
     : uqorToQor(t.deployerDepositUqor);
+  // QOR actually held by the contract: deposited minus withdrawn.
+  const contractBalance = live
+    ? weiToQor(live.totalDeposited - live.totalWithdrawn)
+    : uqorToQor(BigInt(t.totalDepositedUqor) - BigInt(t.totalWithdrawnUqor));
   const sourceLabel =
     status === "live"
       ? "Live — read from the Diana testnet just now"
@@ -363,6 +371,37 @@ export function App() {
       ? "the deployer"
       : "the independent user wallet";
 
+  // Auto-deposit path (live): the L1 deposit the watcher picked up and a
+  // batch credited, the batch that settled it, and the rollup balance
+  // change it caused — all derived from the generated evidence.
+  const autoDeposit = EVIDENCE.cycle.deposits.find((d) => isAutoCredited(d.tx)) ?? null;
+  const autoDepositNumber = autoDeposit
+    ? EVIDENCE.cycle.deposits.findIndex(
+        (d) => d.tx.toLowerCase() === autoDeposit.tx.toLowerCase(),
+      ) + 1
+    : null;
+  const settlingBatch = autoDeposit
+    ? (EVIDENCE.batches.find((b) =>
+        b.deposits.some((d) => d.tx.toLowerCase() === autoDeposit.tx.toLowerCase()),
+      ) ?? null)
+    : null;
+  const prevBatch = settlingBatch
+    ? (EVIDENCE.batches.find((b) => b.batchId === settlingBatch.batchId - 1) ?? null)
+    : null;
+  const deployerLower = EVIDENCE.deployer.toLowerCase();
+  const balanceBefore = prevBatch?.balancesAfter[deployerLower];
+  const balanceAfter = settlingBatch?.balancesAfter[deployerLower];
+  const creditedUqor = settlingBatch
+    ? settlingBatch.deposits.reduce((s, d) => s + BigInt(d.amountUqor), 0n)
+    : 0n;
+  const sentUqor = settlingBatch
+    ? settlingBatch.txs
+        .filter((tx) => tx.from.toLowerCase() === deployerLower)
+        .reduce((s, tx) => s + BigInt(tx.amountUqor), 0n)
+    : 0n;
+  const depositChecks = latest.depositChecks;
+  const latestBatchResult = latest.results[latest.results.length - 1];
+
   return (
     <div className="page">
       <header className="hero">
@@ -375,6 +414,11 @@ export function App() {
           the deposit watcher. Batch payloads are sealed with ML-KEM-1024, withdrawals
           are proven with Merkle proofs against settled state roots — with no sequencer help —
           and a watchtower re-verifies every batch.
+        </p>
+        {/* Hardhat suite total, verified 17 Nov 2026 (contract + off-chain
+            suites). Not in deployments/, so it is stated here, not derived. */}
+        <p className="test-suite" data-testid="test-suite">
+          ✓ 150 Hardhat tests passing · {t.batchCount} batches settled on the Diana testnet
         </p>
         <div className="contract-box" data-testid="contract">
           <span>Settlement contract (chain id {EVIDENCE.chainId})</span>
@@ -405,6 +449,11 @@ export function App() {
         </div>
       </header>
 
+      <p className="explorer-note" data-testid="explorer-note">
+        <strong>Explorer note:</strong> explore.qore.network defaults to Mainnet — switch to
+        Testnet to see the transactions linked on this page.
+      </p>
+
       <section className="stats" data-testid="live-stats">
         <h2>On-chain state</h2>
         <p className="source">{sourceLabel}</p>
@@ -425,8 +474,86 @@ export function App() {
             <span className="stat-value">{deployerDeposit} QOR</span>
             <span className="stat-label">deployer deposit remaining</span>
           </div>
+          <div className="stat" data-testid="contract-balance">
+            <span className="stat-value">{contractBalance} QOR</span>
+            <span className="stat-label">contract balance (deposited − withdrawn)</span>
+          </div>
         </div>
       </section>
+
+      {autoDeposit && settlingBatch && (
+        <section data-testid="auto-deposit">
+          <h2>Auto-deposit path — live on the testnet</h2>
+          <p>
+            Deposit #{autoDepositNumber} arrived on L1, the watcher picked it up, and the next
+            batch credited it into the rollup balance — with no operator intervention at any
+            step. Every hash below links to the explorer.
+          </p>
+          <ol className="flow-steps">
+            <li>
+              <strong>
+                Step 1 — L1 deposit arrives: {uqorToQor(autoDeposit.amountUqor)} QOR
+              </strong>
+              <br />
+              EVM tx <span className="mono">{autoDeposit.tx}</span>
+              <br />
+              Cosmos tx{" "}
+              <HashLink hash={autoDeposit.cosmosTx} label={autoDeposit.cosmosTx} /> · block{" "}
+              <a href={explorerBlock(autoDeposit.block)} target="_blank" rel="noreferrer">
+                {autoDeposit.block.toLocaleString("en-US")}
+              </a>{" "}
+              · {formatTime(autoDeposit.at)}
+            </li>
+            <li>
+              <strong>Step 2 — the watcher auto-credits it</strong>
+              <br />
+              The deposit watcher scans the contract&apos;s <code>Deposited</code> logs and
+              records the deposit; the sequencer credits it in the next batch. No operator
+              touched the rollup state
+              {balanceBefore && balanceAfter && (
+                <>
+                  : the deployer rollup balance moved from {uqorToQor(balanceBefore)} QOR to{" "}
+                  {uqorToQor(balanceAfter)} QOR — +{uqorToQor(creditedUqor)} QOR credited
+                  {sentUqor > 0n && (
+                    <>
+                      , −{uqorToQor(sentUqor)} QOR sent in the batch&apos;s own tx
+                    </>
+                  )}
+                </>
+              )}
+              .
+            </li>
+            <li>
+              <strong>Step 3 — batch #{settlingBatch.batchId} settles it</strong>
+              <br />
+              Submit tx{" "}
+              <HashLink hash={settlingBatch.cosmosTx} label={settlingBatch.cosmosTx} />
+              <br />
+              EVM tx <span className="mono">{settlingBatch.submitTx}</span> · block{" "}
+              <a href={explorerBlock(settlingBatch.block)} target="_blank" rel="noreferrer">
+                {settlingBatch.block.toLocaleString("en-US")}
+              </a>{" "}
+              · {formatTime(settlingBatch.settledAt)}
+            </li>
+          </ol>
+          {depositChecks && (
+            <div
+              className={`deposit-check ${depositChecks.ok ? "ok" : "bad"}`}
+              data-testid="deposit-check"
+            >
+              <strong>
+                {depositChecks.ok
+                  ? "✓ Deposit-credit check OK — credited deposits never exceed supporting L1 deposits"
+                  : `✗ Deposit-credit check FAILED — ${depositChecks.failures.join("; ")}`}
+              </strong>
+              <span>
+                Verified by the watchtower&apos;s deposit-credit checks (per-depositor and
+                aggregate totals against totalDeposited) · run {formatTime(latest.at)}
+              </span>
+            </div>
+          )}
+        </section>
+      )}
 
       <section data-testid="batches">
         <h2>Settled batches</h2>
@@ -756,6 +883,12 @@ export function App() {
           <span>
             Latest run {formatTime(latest.at)} · decrypt check {latest.decryptCheck}
           </span>
+          {latestBatchResult && (
+            <span>
+              Latest batch #{latestBatchResult.batchId}:{" "}
+              {latestBatchResult.ok ? "✓ OK" : "✗ FAIL"}
+            </span>
+          )}
         </div>
         <ul className="watchtower-results">
           {latest.results.map((r) => (
@@ -764,6 +897,17 @@ export function App() {
             </li>
           ))}
         </ul>
+        {depositChecks ? (
+          <p data-testid="watchtower-deposit-check">
+            Deposit-credit check: {depositChecks.ok ? "✓ OK" : "✗ FAIL"} — credited deposits
+            never exceed supporting L1 deposits
+            {!depositChecks.ok && depositChecks.failures.length > 0 && (
+              <> ({depositChecks.failures.join("; ")})</>
+            )}
+          </p>
+        ) : (
+          <p className="muted">Deposit-credit check: not run in this watchtower version.</p>
+        )}
         {tamper && (
           <div className="tamper-demo">
             <h3>Tamper-catch demo (same day, minutes earlier)</h3>

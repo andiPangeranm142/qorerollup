@@ -17,6 +17,7 @@ export type BatchDeposit = {
   depositor: string;
   amountUqor: string;
   tx: string;
+  cosmosTx: string | null;
   block: number;
 };
 
@@ -307,6 +308,7 @@ export const EVIDENCE: Evidence = {
           "depositor": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
           "amountUqor": "100000",
           "tx": "0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e",
+          "cosmosTx": "D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9",
           "block": 10252674
         }
       ],

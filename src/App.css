@@ -50,6 +50,36 @@ h1 { font-size: 3rem; margin: 0 0 0.75rem; line-height: 1.1; }
 }
 .contract-box .links { color: var(--muted); font-size: 0.95rem; }
 
+.test-suite { color: var(--accent); font-weight: 600; margin-top: 1rem; }
+
+.explorer-note {
+  background: var(--panel);
+  border: 1px solid var(--warn);
+  border-radius: 12px;
+  padding: 0.8rem 1.1rem;
+  margin-bottom: 2.5rem;
+}
+.explorer-note strong { color: var(--warn); }
+
+.flow-steps { display: flex; flex-direction: column; gap: 0.8rem; padding-left: 1.4rem; }
+.flow-steps li { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 1rem; list-style-position: inside; }
+
+.deposit-check {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: var(--panel);
+  margin-top: 1rem;
+}
+.deposit-check.ok { border-color: var(--ok); }
+.deposit-check.ok strong { color: var(--ok); }
+.deposit-check.bad { border-color: var(--bad); }
+.deposit-check.bad strong { color: var(--bad); }
+.deposit-check span { color: var(--muted); font-size: 0.9rem; }
+
 section { margin-bottom: 2.5rem; }
 h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
 h3 { font-size: 1.15rem; margin-top: 1.5rem; }

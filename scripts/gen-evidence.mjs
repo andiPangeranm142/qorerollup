@@ -27,6 +27,12 @@ const usage = readJson(dep("usage.json"));
 const state = readJson(dep("state.json"));
 const watchtower = readJson(dep("watchtower-log.json"));
 const kem = readJson(dep("kem-public-key.json"));
+// The batch files store L1 deposits with their EVM hash only; the
+// explorer links need the Cosmos hash, so join via deposits.json.
+const depositsLog = readJson(dep("deposits.json"));
+const depositCosmosByTx = new Map(
+  depositsLog.deposits.map((d) => [d.tx.toLowerCase(), d.cosmosTx ?? null]),
+);
 
 const step = (command) => usage.steps.find((s) => s.command === command);
 const settles = usage.steps.filter((s) => s.command === "settle");
@@ -94,10 +100,13 @@ const batches = settles.map((s) => {
     })),
     // L1 deposits credited by this batch (applied before the txs).
     // Empty for batches 0-2, which predate the deposit watcher.
+    // cosmosTx joins via deposits.json so the demo can link the deposit
+    // to explore.qore.network/tx/<cosmos-hash>.
     deposits: (file.deposits ?? []).map((d) => ({
       depositor: d.depositor,
       amountUqor: d.amountUqor,
       tx: d.tx,
+      cosmosTx: depositCosmosByTx.get(d.tx.toLowerCase()) ?? null,
       block: d.block,
     })),
     balancesAfter: file.balances,
@@ -262,8 +271,8 @@ const evidence = {
       decryptCheck: latestRun.decryptCheck,
       results: latestRun.results,
       // Deposit credit check (e)/(f) from the latest run, or null for
-      // runs that predate it. Emitted for the demo to display later;
-      // the current page does not render it yet.
+      // runs that predate it. Rendered by the auto-deposit section and
+      // the watchtower section.
       depositChecks: latestRun.depositChecks ?? null,
     },
     tamperDemo: tamperRun
@@ -307,6 +316,7 @@ export type BatchDeposit = {
   depositor: string;
   amountUqor: string;
   tx: string;
+  cosmosTx: string | null;
   block: number;
 };
 
