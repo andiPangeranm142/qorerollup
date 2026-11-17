@@ -11,7 +11,7 @@ reverted on-chain, and the watchtower verifies all batches clean.
 
 - Project page: https://build.qorechain.io/p/qorerollup
 - Demo site: https://andipangeranm142.github.io/qorerollup/
-- Demo video: https://cdn.jsdelivr.net/gh/andiPangeranm142/qorerollup@1cddb048f60c1156859ffe631f498d5ba065f012/docs/demo.mp4 (2:23, silent; also at docs/demo.mp4)
+- Demo video: https://www.youtube.com/watch?v=43X_bieF6A0 (2:23, silent; also at docs/demo.mp4)
 
 ## Team
 
