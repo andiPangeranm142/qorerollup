@@ -6,7 +6,7 @@ Fest judges.
 ## What was used
 
 This project was built with **Muse Spark**, an AI coding agent, working
-under the direction of the human team (Andi Pangeran, with Ajeng Ayu Kusum
+under the direction of the human team (Andi Pangeran, with Ajeng Ayu Kusuma
 as the second team member). The AI wrote code, tests, and documentation;
 the human directed the work, set the goals, approved the approach, and
 owns the result.

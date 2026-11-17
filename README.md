@@ -16,7 +16,7 @@ reverted on-chain, and the watchtower verifies all batches clean.
 ## Team
 
 - **Andi Pangeran** ([@andiPangeranm142](https://github.com/andiPangeranm142)) — Indonesia
-- **Ajeng Ayu Kusum** ([@Ajengayukusu](https://github.com/Ajengayukusu)) — Indonesia
+- **Ajeng Ayu Kusuma** ([@Ajengayukusu](https://github.com/Ajengayukusu)) — Indonesia
 
 ## Concept
 
