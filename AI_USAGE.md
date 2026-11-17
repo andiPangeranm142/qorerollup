@@ -70,6 +70,16 @@ repo was fabricated:
   (`0xb0d9842996e735efe3d842fae71309625bd75ceab8c61628224c0f12e560391c`),
   and the deployer withdrew 0.3 QOR against batch #3 with a Merkle
   proof (`0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91`).
+- The fresh-account test is real testnet activity too: a fresh wallet
+  deposited 0.05 QOR (EVM tx `0xba8dbf221d8db7c4045d67e58df1470a041a0b396bd77811692223befde6592b`),
+  the deposit watcher picked it up, batch #4 credited it
+  (`0x3dc38a1ca1a71b8bb86325b19ce65eee7a1a33df073a700dc30aa431737b56c9`),
+  and the fresh account withdrew the full 0.05 QOR against batch #4
+  with a Merkle proof
+  (`0x231d3a550bc5ecdf5e9ff5a52cf7877d6712619a3b5ed81a55db8d8965b17798`).
+  The test followed OUTSIDER_TEST.md end to end but was run by the
+  builder — it is a fresh-account test, not an independent outsider
+  test.
 
 Anyone can re-verify the evidence: the batch files contain everything
 needed to recompute the commitments, replay the state transitions, and

@@ -36,14 +36,16 @@ const depositCosmosByTx = new Map(
 
 const step = (command) => usage.steps.find((s) => s.command === command);
 const settles = usage.steps.filter((s) => s.command === "settle");
-// ALL deposit steps (the 0.3 QOR genesis deposit + the 0.1 QOR
-// auto-credit-cycle deposit): totals must SUM them, not take the first.
+// ALL deposit steps (the 0.3 QOR genesis deposit, the 0.1 QOR
+// auto-credit-cycle deposit, the 0.05 QOR fresh-account-test
+// deposit): totals must SUM them, not take the first.
 const depositSteps = usage.steps.filter((s) => s.command === "deposit");
 const deposit = depositSteps[0];
 // v2: withdrawals are Merkle-proof withdrawals (command "merkle-withdraw",
 // no withdrawalId); fall back to the v1 "withdraw" step for old usage logs.
-// There are two of them now (user 0.05 QOR + deployer 0.3 QOR): totals
-// must SUM them, and the cycle shows both.
+// There are three of them now (user 0.05 QOR + deployer 0.3 QOR +
+// fresh test account 0.05 QOR): totals must SUM them, and the cycle
+// shows all three.
 const withdrawSteps = usage.steps.filter(
   (s) => s.command === "merkle-withdraw" || s.command === "withdraw",
 );
@@ -188,9 +190,16 @@ const evidence = {
     totalDepositedUqor: sumUqor(depositSteps),
     totalWithdrawnUqor: sumUqor(withdrawSteps),
     // v2: Merkle-proof withdrawals do NOT touch the deposits ledger, so
-    // deposits(deployer) is still the full deposit (the deployer is the
-    // only depositor). v1 subtracted the withdrawal; v2 does not.
-    deployerDepositUqor: sumUqor(depositSteps),
+    // deposits(deployer) is still the full 0.4 QOR. The deployer is no
+    // longer the only depositor (the fresh test account deposited
+    // 0.05 QOR), so this sums deposits.json records from the deployer
+    // only — it must match the on-chain deposits[deployer]. (The
+    // genesis usage step has no account field, so deposits.json, not
+    // the usage steps, is the source here.)
+    deployerDepositUqor: depositsLog.deposits
+      .filter((d) => d.depositor?.toLowerCase() === testnet.deployer.toLowerCase())
+      .reduce((sum, d) => sum + BigInt(d.amountUqor), 0n)
+      .toString(),
     finalStateRoot: state.stateRoot,
   },
   balances: state.balances,
@@ -216,8 +225,9 @@ const evidence = {
       cosmosTx: deposit.cosmosTx,
       block: deposit.block,
     },
-    // Every deposit (the genesis 0.3 QOR + the auto-credit 0.1 QOR),
-    // in chain order — the cycle section renders each one.
+    // Every deposit (the genesis 0.3 QOR + the auto-credit 0.1 QOR +
+    // the fresh-account-test 0.05 QOR), in chain order — the cycle
+    // section renders each one.
     deposits: depositSteps.map((d) => ({
       at: d.at,
       amountUqor: d.amountUqor,
@@ -238,7 +248,8 @@ const evidence = {
       block: withdraw.block,
     },
     // Every Merkle-proof withdrawal (user 0.05 QOR against batch #2 +
-    // deployer 0.3 QOR against batch #3), in chain order.
+    // deployer 0.3 QOR against batch #3 + fresh test account 0.05 QOR
+    // against batch #4), in chain order.
     withdrawals: withdrawSteps.map((w) => ({
       at: w.at,
       amountUqor: w.amountUqor,

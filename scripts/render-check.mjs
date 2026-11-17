@@ -105,10 +105,10 @@ const checks = {
   "contract address v2": text.includes("0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708"),
   "no v1 contract": !text.includes("0x96051b69"),
   "no nullifier text": !text.toLowerCase().includes("nullifier"),
-  "batchCount 4": batchCountValue === "4",
-  "4 batch cards": batchCards === 4,
-  "total deposited 0.4 QOR": depositedValue === "0.4 QOR",
-  "total withdrawn 0.35 QOR": withdrawnValue === "0.35 QOR",
+  "batchCount 5": batchCountValue === "5",
+  "5 batch cards": batchCards === 5,
+  "total deposited 0.45 QOR": depositedValue === "0.45 QOR",
+  "total withdrawn 0.4 QOR": withdrawnValue === "0.4 QOR",
   "deployer deposit 0.4 QOR": deployerDepositValue === "0.4 QOR",
   "contract balance 0.05 QOR": contractBalanceValue === "0.05 QOR",
   "150 Hardhat tests": text.includes("150 Hardhat tests"),
@@ -130,16 +130,20 @@ const checks = {
     text.includes("Deposit-credit check OK") &&
     text.includes("never exceed supporting L1 deposits"),
   "batch #3 card deposit link is cosmos (not EVM)": batch3DepositCosmosLink > 0,
-  "watchtower latest batch #3 OK": text.includes("Latest batch #3: ✓ OK"),
+  "watchtower latest batch #4 OK": text.includes("Latest batch #4: ✓ OK"),
   "watchtower ALL BATCHES OK": text.includes("ALL BATCHES OK"),
-  "watchtower 4/4": text.includes("4/4 batches verified"),
+  "watchtower 5/5": text.includes("5/5 batches verified"),
   "tamper-catch demo": text.includes("Tamper-catch demo"),
   "tamper failed on 8 checks": text.includes("8 independent checks"),
   "merkle-proof withdrawal section": text.includes("Merkle-proof withdrawal"),
   "merkle section shows real data (not placeholder)":
     text.includes("3 steps") && text.includes("Merkle leaf") && !text.includes("Coming in v2"),
-  "merkle withdraw account is the deployer (batch #3 cycle)":
-    text.includes("0x0140a056ee37D5240b0397eCdF1347Da80E33b9f"),
+  "merkle withdraw account is the fresh test account (batch #4 cycle)":
+    text.includes("0x2837CaC00Ec6Bf9D6334bA717E4d8b1F50C5837f") &&
+    text.includes("fresh test account") &&
+    text.includes("not an independent outsider"),
+  "cycle shows the fresh-account withdrawal (honest label)":
+    text.includes("fresh test account (builder-run test)"),
   "auto-credit: batch #3 card shows its credited deposit":
     text.includes("L1 deposits credited (auto-credit)") && text.includes("100,000 uqor"),
   "auto-credit: cycle shows the 0.1 QOR deposit":
@@ -152,8 +156,8 @@ const checks = {
     text.includes("Genesis funding") && !text.includes("not auto-credited"),
   "first-cycle user withdrawal still shown":
     text.includes("Merkle-proof withdrawal — 0.05 QOR"),
-  "balances total conserved from 0.4 QOR":
-    text.includes("conserved from the 0.4 QOR deposited"),
+  "balances total conserved from 0.45 QOR":
+    text.includes("conserved from the 0.45 QOR deposited"),
   "double-withdraw revert": text.includes("ZeroWithdraw"),
   "tampered-proof revert": text.includes("InvalidMerkleProof"),
   "forged batch reverted": text.includes("REVERTED on-chain"),

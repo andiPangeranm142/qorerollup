@@ -365,11 +365,18 @@ export function App() {
     EVIDENCE.batches.some((b) =>
       b.deposits.some((d) => d.tx.toLowerCase() === tx.toLowerCase()),
     );
-  // The only two withdrawers are the deployer and the independent user wallet.
-  const withdrawerLabel = (account: string | null) =>
-    account && account.toLowerCase() === EVIDENCE.deployer.toLowerCase()
-      ? "the deployer"
-      : "the independent user wallet";
+  // The three withdrawers so far: the deployer, the independent user
+  // wallet (first Merkle withdrawal, batch #2), and the fresh test
+  // account (fresh-account test, batch #4 — run by the builder, NOT
+  // an independent outsider).
+  const USER_WALLET = "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f";
+  const withdrawerLabel = (account: string | null) => {
+    if (!account) return "an unknown account";
+    const a = account.toLowerCase();
+    if (a === EVIDENCE.deployer.toLowerCase()) return "the deployer";
+    if (a === USER_WALLET) return "the independent user wallet";
+    return "a fresh test account (builder-run test)";
+  };
 
   // Auto-deposit path (live): the L1 deposit the watcher picked up and a
   // batch credited, the batch that settled it, and the rollup balance
@@ -790,7 +797,9 @@ export function App() {
                     {EVIDENCE.merkleWithdraw.account.toLowerCase() ===
                     EVIDENCE.deployer.toLowerCase()
                       ? "(the deployer — withdrawing its own leaf; the withdrawal path makes no sequencer call)"
-                      : "(independent user wallet — not the sequencer)"}
+                      : EVIDENCE.merkleWithdraw.account.toLowerCase() === USER_WALLET
+                        ? "(independent user wallet — not the sequencer)"
+                        : "(fresh test account — not the sequencer; builder-run test, not an independent outsider)"}
                   </dd>
                 </div>
               )}

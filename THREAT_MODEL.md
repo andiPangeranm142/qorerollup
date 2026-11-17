@@ -415,7 +415,18 @@ Trust boundaries:
   #3 with a Merkle proof (EVM tx
   `0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91`,
   block 10253087) — deposit → auto-credit → batch → withdraw, every
-  step on-chain. The negative cases are covered in the Hardhat tests
+  step on-chain. The same flow was re-proven the same day for a
+  brand-new account (fresh-account test, run by the builder
+  following OUTSIDER_TEST.md — not an independent outsider test): a
+  fresh wallet deposited 0.05 QOR (EVM tx
+  `0xba8dbf221d8db7c4045d67e58df1470a041a0b396bd77811692223befde6592b`,
+  block 10256490), the watcher picked it up, batch #4 credited it
+  (EVM tx
+  `0x3dc38a1ca1a71b8bb86325b19ce65eee7a1a33df073a700dc30aa431737b56c9`,
+  block 10256512), and the fresh account withdrew the full 0.05 QOR
+  against batch #4 with a Merkle proof (EVM tx
+  `0x231d3a550bc5ecdf5e9ff5a52cf7877d6712619a3b5ed81a55db8d8965b17798`,
+  block 10256530). The negative cases are covered in the Hardhat tests
   (`test/deposit-credit.test.ts`: a fake credit and a credit
   exceeding its supporting deposit fail at both the watcher/sequencer
   level and the watchtower level).

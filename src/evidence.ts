@@ -164,18 +164,19 @@ export const EVIDENCE: Evidence = {
   "explorerContract": "https://explore.qore.network/address/0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
   "explorerDeployTx": "https://explore.qore.network/tx/5DFEEF53AEFBD5F23FA3DA9DC6F47D7168B5A91DEB75843211CA4470E4713510",
   "totals": {
-    "batchCount": 4,
-    "totalDepositedUqor": "400000",
-    "totalWithdrawnUqor": "350000",
+    "batchCount": 5,
+    "totalDepositedUqor": "450000",
+    "totalWithdrawnUqor": "400000",
     "deployerDepositUqor": "400000",
-    "finalStateRoot": "0x15841ef61972d5ec7fda90d932592ed2d6ac7a45b967c84099898342cd01dc65"
+    "finalStateRoot": "0x32dff944bd0925af967f336ed83916b45f1d2f4620d97aed8c3532e088c58f84"
   },
   "balances": {
     "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
     "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "60000",
     "0x1111111111111111111111111111111111111111": "15000",
     "0x2222222222222222222222222222222222222222": "10000",
-    "0x3333333333333333333333333333333333333333": "15000"
+    "0x3333333333333333333333333333333333333333": "15000",
+    "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000"
   },
   "batches": [
     {
@@ -319,6 +320,48 @@ export const EVIDENCE: Evidence = {
         "0x2222222222222222222222222222222222222222": "10000",
         "0x3333333333333333333333333333333333333333": "15000"
       }
+    },
+    {
+      "batchId": 4,
+      "txCount": 1,
+      "stateRoot": "0x32dff944bd0925af967f336ed83916b45f1d2f4620d97aed8c3532e088c58f84",
+      "prevStateRoot": "0x15841ef61972d5ec7fda90d932592ed2d6ac7a45b967c84099898342cd01dc65",
+      "txDataCommitment": "0xeb191cdf350bc502234cab3954ab21fec6e207047774458de35dc8780ea6f6a1",
+      "encryptedDataHash": "0x0bb379b5a76b358e7b456ee27ba8d760f0c19dfc2a8c1cd0356bd18e8747e064",
+      "digest": "0x2a488c5020d2ab6b937cac9ca470a07ebdd26727ba411e88e2fe88b582fb2af4",
+      "receiptHash": "0x98f7485d86a0b6cb961929b5c886e70e3a2f5b8777b025f824fb52de601f120c",
+      "submitTx": "0x3dc38a1ca1a71b8bb86325b19ce65eee7a1a33df073a700dc30aa431737b56c9",
+      "cosmosTx": "2B760E67ADE8D0741BA85E203D1261304661ABCE36FF904933B4705F8508FEDD",
+      "block": 10256512,
+      "settledAt": "2026-11-17T13:04:43.464Z",
+      "signatureBytes": 4627,
+      "kemCiphertextBytes": 1568,
+      "sealedBlobBytes": 345,
+      "txs": [
+        {
+          "from": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "to": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "amountUqor": "1",
+          "nonce": 4
+        }
+      ],
+      "deposits": [
+        {
+          "depositor": "0x2837CaC00Ec6Bf9D6334bA717E4d8b1F50C5837f",
+          "amountUqor": "50000",
+          "tx": "0xba8dbf221d8db7c4045d67e58df1470a041a0b396bd77811692223befde6592b",
+          "cosmosTx": "C9DDAC126294617E2A53EED7C09EDDD060C2CF6330C161586899A8E129A25C45",
+          "block": 10256490
+        }
+      ],
+      "balancesAfter": {
+        "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
+        "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "60000",
+        "0x1111111111111111111111111111111111111111": "15000",
+        "0x2222222222222222222222222222222222222222": "10000",
+        "0x3333333333333333333333333333333333333333": "15000",
+        "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000"
+      }
     }
   ],
   "cycle": {
@@ -349,6 +392,13 @@ export const EVIDENCE: Evidence = {
         "tx": "0x3c37b8f32daa3b42090a4a16121be141a2ec33747467f879d8b69028275bd08e",
         "cosmosTx": "D1BF023F9C1BCB84831ABDB86DFF3098A257936D6DE103A8DDA281B04DD655D9",
         "block": 10252674
+      },
+      {
+        "at": "2026-11-17T13:04:12.691Z",
+        "amountUqor": "50000",
+        "tx": "0xba8dbf221d8db7c4045d67e58df1470a041a0b396bd77811692223befde6592b",
+        "cosmosTx": "C9DDAC126294617E2A53EED7C09EDDD060C2CF6330C161586899A8E129A25C45",
+        "block": 10256490
       }
     ],
     "withdraw": {
@@ -381,6 +431,17 @@ export const EVIDENCE: Evidence = {
         "tx": "0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91",
         "cosmosTx": "B11F3986401D66598A1DF23CCEF90E7FA807A385C3D2F406AC96F8DA626640FB",
         "block": 10253087
+      },
+      {
+        "at": "2026-11-17T13:05:09.839Z",
+        "amountUqor": "50000",
+        "account": "0x2837CaC00Ec6Bf9D6334bA717E4d8b1F50C5837f",
+        "batchId": 4,
+        "leaf": "0x168b537093cead3b5de6a4d4b520b6c8054c17d2173fef3d1a97059c699a8cef",
+        "proofSteps": 3,
+        "tx": "0x231d3a550bc5ecdf5e9ff5a52cf7877d6712619a3b5ed81a55db8d8965b17798",
+        "cosmosTx": "F80120317E7183546501F3962AE519370E70213DDE93857BB3DF58B4DAEB1196",
+        "block": 10256530
       }
     ],
     "reverts": [
@@ -423,9 +484,9 @@ export const EVIDENCE: Evidence = {
   },
   "watchtower": {
     "latest": {
-      "at": "2026-11-17T11:43:44.255Z",
+      "at": "2026-11-17T13:05:31.454Z",
       "allOk": true,
-      "batchCount": 4,
+      "batchCount": 5,
       "decryptCheck": "enabled",
       "results": [
         {
@@ -445,6 +506,11 @@ export const EVIDENCE: Evidence = {
         },
         {
           "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
           "ok": true,
           "failures": []
         }
@@ -494,23 +560,23 @@ export const EVIDENCE: Evidence = {
     "publicKeyPrefix": "0x56a1a674b07c58644adc63bb53e2c144"
   },
   "merkleWithdraw": {
-    "at": "2026-11-17T11:43:09.703Z",
-    "batchId": 3,
-    "account": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
-    "stateRoot": "0x15841ef61972d5ec7fda90d932592ed2d6ac7a45b967c84099898342cd01dc65",
-    "leaf": "0x99d4379e8d1bcd9e4d534759300f10260d103b9dd9d31b54c2551d981a30ba0c",
+    "at": "2026-11-17T13:05:09.841Z",
+    "batchId": 4,
+    "account": "0x2837CaC00Ec6Bf9D6334bA717E4d8b1F50C5837f",
+    "stateRoot": "0x32dff944bd0925af967f336ed83916b45f1d2f4620d97aed8c3532e088c58f84",
+    "leaf": "0x168b537093cead3b5de6a4d4b520b6c8054c17d2173fef3d1a97059c699a8cef",
     "proof": [
-      "0x47a01dd6ab07f0a1662458e1ab78f7b17c6a65331672c0fe3364ace15da444d4",
-      "0x62fb267da2aad5b9ffec51ff240cc0ef12b907b6d2e5f636920e28e11dd9f7cc",
-      "0x4f9f8d354ffd02607dd8c0c6a5fff144a373f2e5588b32d50185af80f07bcb90"
+      "0x1c1a6df03be0534d8a018f4d0109711615e9f114546669b33649b007c3837d46",
+      "0x78cc85adeb399b78335cd853ed6169bc3c887c4aa505c9313b3c76ad9e36a036",
+      "0xd3ab855a1fb1bb17df7ae3d5c7ddfc477fe7138f70cebc926416d4f09594a6b2"
     ],
     "proofSteps": 3,
-    "amountUqor": "300000",
+    "amountUqor": "50000",
     "withdrawnBefore": "0",
-    "withdrawnAfter": "300000",
-    "tx": "0x926d52875bffc10bc5ad3577f740b4e41641c34444972092241521363d0a6a91",
-    "cosmosTx": "B11F3986401D66598A1DF23CCEF90E7FA807A385C3D2F406AC96F8DA626640FB",
-    "block": 10253087,
+    "withdrawnAfter": "50000",
+    "tx": "0x231d3a550bc5ecdf5e9ff5a52cf7877d6712619a3b5ed81a55db8d8965b17798",
+    "cosmosTx": "F80120317E7183546501F3962AE519370E70213DDE93857BB3DF58B4DAEB1196",
+    "block": 10256530,
     "note": "Merkle-proof withdrawal against a settled batch state root — no sequencer involvement."
   }
 };
