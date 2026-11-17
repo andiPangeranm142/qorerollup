@@ -13,10 +13,10 @@ all batches clean — including the deposit credit check.
 
 - Project page: https://build.qorechain.io/p/qorerollup
 - Demo site: https://andipangeranm142.github.io/qorerollup/
-- Demo video: [docs/demo.mp4](docs/demo.mp4) (2:48, narrated in English — 4 batches,
-  auto-deposit cycle, Merkle-proof withdrawal, reverted attacks,
-  watchtower; recorded 17 Nov 2026 at 4 batches — batch #4 settled later
-  the same day, see the evidence table). Also on YouTube:
+- Demo video: [docs/demo.mp4](docs/demo.mp4) (2:50, narrated in English — 5 batches,
+  three full cycles including a fresh-account cycle, Merkle-proof
+  withdrawal, reverted attacks, watchtower). Also on YouTube
+  (previous 4-batch cut; new upload pending):
   https://www.youtube.com/watch?v=b4m2iZkBjIw
 
 ## Team
