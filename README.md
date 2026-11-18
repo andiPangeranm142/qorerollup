@@ -16,10 +16,10 @@ credit check.
 
 - Project page: https://build.qorechain.io/p/qorerollup
 - Demo site: https://andipangeranm142.github.io/qorerollup/
-- Demo video: [docs/demo.mp4](docs/demo.mp4) (2:50, narrated in English — 5 batches,
-  three full cycles including a fresh-account cycle, Merkle-proof
-  withdrawal, reverted attacks, watchtower). Also on YouTube:
-  https://www.youtube.com/watch?v=3yUJCwdbmR4
+- Demo video: [docs/demo.mp4](docs/demo.mp4) (2:58, narrated in English — 8 batches,
+  six full cycles including four fresh-account cycles, Merkle-proof
+  withdrawal, six reverted attacks, watchtower, auto-settle). Also on YouTube:
+  https://www.youtube.com/watch?v=kd2eNNlbx64
 
 ## Team
 
