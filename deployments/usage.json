@@ -1292,6 +1292,20 @@
       "receiptStatus": "reverted",
       "withdrawnAmountBefore": "50000",
       "withdrawnAmountAfter": "50000"
+    },
+    {
+      "at": "2026-11-18T08:07:33.028Z",
+      "command": "deposit-watcher",
+      "fromBlock": 10303752,
+      "toBlock": 10304502,
+      "eventsFound": 0,
+      "newDeposits": [],
+      "alreadyKnown": 0,
+      "skipped": [],
+      "pendingCount": 0,
+      "pendingUqor": "0",
+      "creditedUqor": "600000",
+      "totalDepositedUqor": "600000"
     }
   ]
 }
