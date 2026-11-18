@@ -15,6 +15,11 @@ export const CONTRACT_ADDRESS = EVIDENCE.contract as `0x${string}`;
 /** Deployer = sequencer. */
 export const SEQUENCER_ADDRESS = EVIDENCE.deployer as `0x${string}`;
 
+/** Published watchtower status, refreshed after each verification run.
+ * raw.githubusercontent.com — NOT jsDelivr @main, which caches. */
+export const WATCHTOWER_STATUS_URL =
+  "https://raw.githubusercontent.com/andiPangeranm142/qorerollup/main/deployments/watchtower-status.json";
+
 export const GITHUB_REPO = "https://github.com/andiPangeranm142/qorerollup";
 export const PROJECT_PAGE = "https://build.qorechain.io/p/qorerollup";
 

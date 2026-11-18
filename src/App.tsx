@@ -9,6 +9,7 @@ import {
   PROJECT_PAGE,
   SEQUENCER_ADDRESS,
   TESTNET_CHAIN_ID,
+  WATCHTOWER_STATUS_URL,
   explorerAddress,
   explorerBlock,
   explorerTx,
@@ -192,6 +193,70 @@ function useLiveChain(): { live: LiveState; status: "loading" | "live" | "fallba
   return { live, status };
 }
 
+/** Shape of deployments/watchtower-status.json, published after each
+ * watchtower verification run (see scripts/watchtower-status.ts). */
+type WatchtowerStatusFile = {
+  lastRun: string;
+  batchesVerified: number;
+  totalBatches: number;
+  depositsCreditedUqor: string;
+  status: "ok" | "fail";
+};
+
+function useWatchtowerStatus(): {
+  live: WatchtowerStatusFile | null;
+  status: "loading" | "live" | "fallback";
+} {
+  const [live, setLive] = useState<WatchtowerStatusFile | null>(null);
+  const [status, setStatus] = useState<"loading" | "live" | "fallback">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    (async () => {
+      try {
+        const res = await fetch(WATCHTOWER_STATUS_URL, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as Partial<WatchtowerStatusFile>;
+        if (
+          typeof data.lastRun !== "string" ||
+          typeof data.batchesVerified !== "number" ||
+          typeof data.totalBatches !== "number" ||
+          (data.status !== "ok" && data.status !== "fail")
+        ) {
+          throw new Error("unexpected shape");
+        }
+        if (!cancelled) {
+          setLive({
+            lastRun: data.lastRun,
+            batchesVerified: data.batchesVerified,
+            totalBatches: data.totalBatches,
+            depositsCreditedUqor:
+              typeof data.depositsCreditedUqor === "string" ? data.depositsCreditedUqor : "0",
+            status: data.status,
+          });
+          setStatus("live");
+        }
+      } catch {
+        // The status file is published on main after each verification
+        // run; until it exists (or if the fetch fails) fall back to the
+        // verified evidence file and say so. Never crash the page.
+        if (!cancelled) setStatus("fallback");
+      } finally {
+        clearTimeout(timer);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, []);
+
+  return { live, status };
+}
+
 function HashLink({ hash, label }: { hash: string; label?: string }) {
   return (
     <a className="hash" href={explorerTx(hash)} target="_blank" rel="noreferrer" title={hash}>
@@ -311,8 +376,10 @@ function BatchCard({ batch, liveBatch }: { batch: BatchSummary; liveBatch?: Live
 
 export function App() {
   const { live, status } = useLiveChain();
+  const { live: wtLive, status: wtStatus } = useWatchtowerStatus();
   const t = EVIDENCE.totals;
   const batchCount = live ? Number(live.batchCount) : t.batchCount;
+  const lastBatchId = batchCount > 0 ? batchCount - 1 : null;
   const deposited = live ? weiToQor(live.totalDeposited) : uqorToQor(t.totalDepositedUqor);
   const withdrawn = live ? weiToQor(live.totalWithdrawn) : uqorToQor(t.totalWithdrawnUqor);
   const deployerDeposit = live
@@ -468,6 +535,10 @@ export function App() {
           <div className="stat" data-testid="batch-count">
             <span className="stat-value">{batchCount}</span>
             <span className="stat-label">batches settled (batchCount)</span>
+          </div>
+          <div className="stat" data-testid="last-batch">
+            <span className="stat-value">{lastBatchId ?? "—"}</span>
+            <span className="stat-label">last batch id</span>
           </div>
           <div className="stat" data-testid="total-deposited">
             <span className="stat-value">{deposited} QOR</span>
@@ -882,6 +953,24 @@ export function App() {
           contract&apos;s cumulative totalDeposited, and the deposit credit check — every
           credited deposit matched against the on-chain <code>Deposited</code> logs, with the
           credited total checked against totalDeposited in aggregate and per depositor.
+        </p>
+        <p className="source" data-testid="watchtower-live-status">
+          {wtStatus === "live" && wtLive ? (
+            <>
+              Live status — last run {formatTime(wtLive.lastRun)} · {wtLive.batchesVerified}/
+              {wtLive.totalBatches} batches verified ·{" "}
+              {wtLive.status === "ok" ? "✓ OK" : "✗ FAIL"} ·{" "}
+              {uqorToQor(wtLive.depositsCreditedUqor)} QOR deposits credited
+            </>
+          ) : wtStatus === "loading" ? (
+            "Checking the live watchtower status…"
+          ) : (
+            <>
+              Live watchtower status unavailable — showing the last verified run from the
+              evidence file (run {formatTime(latest.at)} · {okCount}/{latest.results.length}{" "}
+              batches verified)
+            </>
+          )}
         </p>
         <div className={`watchtower-status ${latest.allOk ? "ok" : "bad"}`}>
           <strong>
