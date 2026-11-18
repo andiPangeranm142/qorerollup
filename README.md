@@ -272,6 +272,49 @@ can be checked independently:
    no keys are required. Every run is appended to
    [deployments/watchtower-log.json](deployments/watchtower-log.json).
 
+A full clean-clone reproduction — fresh clone, no secrets: install,
+tests, watchtower, Merkle-proof verification — is documented with
+exact commands and results in
+[REPRODUCIBILITY.md](REPRODUCIBILITY.md).
+
+## Benchmarks
+
+Gas used, read from the real EVM receipts with viem
+`getTransactionReceipt` against `https://evm-testnet.qore.host`
+(18 Nov 2026). No estimates — every number below is a receipt value.
+All three cycles are the fresh-account deposit → settle → withdraw
+loops from the table above (0.05 QOR each).
+
+| Operation | Gas used | EVM tx |
+| --- | --- | --- |
+| Deposit (cycle A → batch #5) | 50,060 | `0xc5c8e525667ddfe023fc39a5fa9261f863783366c375e5c4fd05b605d6dabdcc` |
+| Settle batch #5 (1 deposit + 1 tx, 7 leaves) | 324,500 | `0xb9968a9f9a90b7e29ddc57e2aeb2ae2e59320e08080518afc35d409c28359e74` |
+| Merkle withdraw (cycle A, batch #5, 2-element proof) | 65,365 | `0x59b79698a630a95c034ac4627ab3dbab4896b51602ef9175a0e95b2a91142ebe` |
+| Deposit (cycle B → batch #6) | 50,060 | `0x5b17a00d4dff713c197d4892d3d65586c4f095744a88c8454d11974bbc90fac7` |
+| Settle batch #6 (1 deposit + 1 tx, 8 leaves) | 324,536 | `0x20047440306e0c822636eacb5b148a89ed4194bb30fad8d9237bb0abec3691d7` |
+| Merkle withdraw (cycle B, batch #6, 3-element proof) | 66,153 | `0x8cb2542d342efaf67b0af91fe787016901d823a1cfc9a98ba6c568dd8136dd25` |
+| Deposit (cycle C → batch #7) | 50,060 | `0x2472759ca39e789555f839b34431859dce0c583d945d317254b18141ac799dc6` |
+| Settle batch #7 (1 deposit + 1 tx, 9 leaves) | 324,488 | `0xf2bb705e4588332282937f1de95db5f8fe1425f95ed33292ccc78a8ad8110c35` |
+| Merkle withdraw (cycle C, batch #7, 4-element proof) | 66,961 | `0x04d24f6666d34481912f129c45beece1c411fdabd4d344708fc137a03449e6d0` |
+| Replay of settled batch #7 (**reverted**, `InvalidBatchSignature`) | 1,000,000 | `0x2a1d8d6f7ff18dfecf10e5d8a3bc2c6765559107bca65fa7568dd31b537b49bc` |
+
+What the numbers show:
+
+- **Deposits are constant** (50,060 gas each): same code path, same
+  storage writes, regardless of cycle.
+- **Settle is ~324.5k gas** and varies by only tens of gas with batch
+  contents (324,488–324,536 across the three batches) — the ML-DSA-87
+  signature verification via the `pqcVerify` precompile dominates,
+  and the state-root / commitment writes are fixed-size.
+- **Withdrawals grow with proof length**: 65,365 (2 elements) →
+  66,153 (3) → 66,961 (4), about 800 gas per extra proof element —
+  one `keccak256` hash per level, as expected from the sorted-pair
+  fold.
+- **The reverted replay** was sent with an explicit 2,000,000 gas
+  limit (estimation fails for a reverting call, so the demo sends
+  explicit gas); the receipt reports 1,000,000 gas used with status
+  `reverted`. The number is the receipt value, not the limit.
+
 ## How it works
 
 ```mermaid
