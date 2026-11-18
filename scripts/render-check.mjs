@@ -121,11 +121,10 @@ const checks = {
   "no nullifier text": !text.toLowerCase().includes("nullifier"),
   // Live values, read from the chain at render time — update these when a
   // new batch lands (batches 5–7 settled 18 Nov 2026: 8 / 0.6 / 0.55).
-  // The batch CARDS below still come from the evidence file (5 batches
-  // in this branch until the new batch evidence is merged).
+  // The batch CARDS below come from the evidence file (8 batches merged).
   "batchCount 8": batchCountValue === "8",
   "last batch id 7": lastBatchValue === "7",
-  "5 batch cards": batchCards === 5,
+  "8 batch cards": batchCards === 8,
   "total deposited 0.6 QOR": depositedValue === "0.6 QOR",
   "total withdrawn 0.55 QOR": withdrawnValue === "0.55 QOR",
   "deployer deposit 0.4 QOR": deployerDepositValue === "0.4 QOR",
@@ -152,16 +151,16 @@ const checks = {
   "watchtower live-status line (live file or embedded fallback)":
     text.includes("Live status — last run") ||
     text.includes("Live watchtower status unavailable"),
-  "watchtower latest batch #4 OK": text.includes("Latest batch #4: ✓ OK"),
+  "watchtower latest batch #7 OK": text.includes("Latest batch #7: ✓ OK"),
   "watchtower ALL BATCHES OK": text.includes("ALL BATCHES OK"),
-  "watchtower 5/5": text.includes("5/5 batches verified"),
+  "watchtower 8/8": text.includes("8/8 batches verified"),
   "tamper-catch demo": text.includes("Tamper-catch demo"),
   "tamper failed on 8 checks": text.includes("8 independent checks"),
   "merkle-proof withdrawal section": text.includes("Merkle-proof withdrawal"),
   "merkle section shows real data (not placeholder)":
-    text.includes("3 steps") && text.includes("Merkle leaf") && !text.includes("Coming in v2"),
-  "merkle withdraw account is the fresh test account (batch #4 cycle)":
-    text.includes("0x2837CaC00Ec6Bf9D6334bA717E4d8b1F50C5837f") &&
+    text.includes("4 steps") && text.includes("Merkle leaf") && !text.includes("Coming in v2"),
+  "merkle withdraw account is the fresh test account (batch #7 cycle)":
+    text.includes("0xaf9eD7049d664B805bcd866A44bA3cc2725F1Ded") &&
     text.includes("fresh test account") &&
     text.includes("not an independent outsider"),
   "cycle shows the fresh-account withdrawal (honest label)":
@@ -178,8 +177,8 @@ const checks = {
     text.includes("Genesis funding") && !text.includes("not auto-credited"),
   "first-cycle user withdrawal still shown":
     text.includes("Merkle-proof withdrawal — 0.05 QOR"),
-  "balances total conserved from 0.45 QOR":
-    text.includes("conserved from the 0.45 QOR deposited"),
+  "balances total conserved from 0.6 QOR":
+    text.includes("conserved from the 0.6 QOR deposited"),
   "double-withdraw revert": text.includes("ZeroWithdraw"),
   "tampered-proof revert": text.includes("InvalidMerkleProof"),
   "forged batch reverted": text.includes("REVERTED on-chain"),

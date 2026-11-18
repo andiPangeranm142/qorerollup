@@ -164,11 +164,11 @@ export const EVIDENCE: Evidence = {
   "explorerContract": "https://explore.qore.network/address/0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
   "explorerDeployTx": "https://explore.qore.network/tx/5DFEEF53AEFBD5F23FA3DA9DC6F47D7168B5A91DEB75843211CA4470E4713510",
   "totals": {
-    "batchCount": 5,
-    "totalDepositedUqor": "450000",
-    "totalWithdrawnUqor": "400000",
+    "batchCount": 8,
+    "totalDepositedUqor": "600000",
+    "totalWithdrawnUqor": "550000",
     "deployerDepositUqor": "400000",
-    "finalStateRoot": "0x32dff944bd0925af967f336ed83916b45f1d2f4620d97aed8c3532e088c58f84"
+    "finalStateRoot": "0xf564f2855aa9fa1e4bcce04d306dbdac80b9cb456292df4fd10d23f6948cb927"
   },
   "balances": {
     "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
@@ -176,7 +176,10 @@ export const EVIDENCE: Evidence = {
     "0x1111111111111111111111111111111111111111": "15000",
     "0x2222222222222222222222222222222222222222": "10000",
     "0x3333333333333333333333333333333333333333": "15000",
-    "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000"
+    "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000",
+    "0xd83610d6901d7c1afc1fd749665d01eef9bedb30": "50000",
+    "0x8b58b1bc07587ab88734f18ded398682cb8228d6": "50000",
+    "0xaf9ed7049d664b805bcd866a44ba3cc2725f1ded": "50000"
   },
   "batches": [
     {
@@ -362,6 +365,138 @@ export const EVIDENCE: Evidence = {
         "0x3333333333333333333333333333333333333333": "15000",
         "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000"
       }
+    },
+    {
+      "batchId": 5,
+      "txCount": 1,
+      "stateRoot": "0x306910379013d19f4e39ba399c156c9899511ae95bb8be7880f98b82261d991a",
+      "prevStateRoot": "0x32dff944bd0925af967f336ed83916b45f1d2f4620d97aed8c3532e088c58f84",
+      "txDataCommitment": "0xbd87adccafdbbf9242a4aba1563df880e1c7babad584e448d28b6418fdc1c3d5",
+      "encryptedDataHash": "0xf2fb71b3229fbbdb5166a6d10f618ca93d176812204a09b3051f4d1c48b1c274",
+      "digest": "0xeb61f5eecbb03a9b78f789066c97e5b1435cc88ff4c05051fd76e5533c1ebda4",
+      "receiptHash": "0x09433b711cf871380fba238b69ba1c1451e882ecb515758e94f29ca2239ee548",
+      "submitTx": "0xb9968a9f9a90b7e29ddc57e2aeb2ae2e59320e08080518afc35d409c28359e74",
+      "cosmosTx": "745A2FFCA67F8B26E0BB430D23B069AB11620378A2E729EF13A6DF1163E3F71C",
+      "block": 10303663,
+      "settledAt": "2026-11-18T07:47:38.220Z",
+      "signatureBytes": 4627,
+      "kemCiphertextBytes": 1568,
+      "sealedBlobBytes": 345,
+      "txs": [
+        {
+          "from": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "to": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "amountUqor": "1",
+          "nonce": 5
+        }
+      ],
+      "deposits": [
+        {
+          "depositor": "0xD83610d6901d7C1aFC1fD749665D01EeF9bedb30",
+          "amountUqor": "50000",
+          "tx": "0xc5c8e525667ddfe023fc39a5fa9261f863783366c375e5c4fd05b605d6dabdcc",
+          "cosmosTx": "C93572935D989D98EAF48DCBE5AB9B050C7E5DA8FB8972F5705579901205B773",
+          "block": 10303644
+        }
+      ],
+      "balancesAfter": {
+        "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
+        "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "60000",
+        "0x1111111111111111111111111111111111111111": "15000",
+        "0x2222222222222222222222222222222222222222": "10000",
+        "0x3333333333333333333333333333333333333333": "15000",
+        "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000",
+        "0xd83610d6901d7c1afc1fd749665d01eef9bedb30": "50000"
+      }
+    },
+    {
+      "batchId": 6,
+      "txCount": 1,
+      "stateRoot": "0x405e989fbdafe364156bbc244c5643c578dd76cf1802ff10b213f733fd0d3a60",
+      "prevStateRoot": "0x306910379013d19f4e39ba399c156c9899511ae95bb8be7880f98b82261d991a",
+      "txDataCommitment": "0x03522fcd074c6a7580454de279c2855359f2b69b6d994742ceba0db588fcc3e9",
+      "encryptedDataHash": "0x0ced75dae0946b54d21ce068f97c6e1669a47e647ce6a08bffc3a0c6653648c2",
+      "digest": "0xbf322faa090a4bba9fbc84e5cab8a7d8152d556ec2bc95b2b05643ea3acbf50a",
+      "receiptHash": "0x3cea3fbbb7373d45cdda22902b5037eea13cfde761d12dd2c21501587befd3fe",
+      "submitTx": "0x20047440306e0c822636eacb5b148a89ed4194bb30fad8d9237bb0abec3691d7",
+      "cosmosTx": "7D739865D7BB212E96D7286E3933E38CBF90239D7C2DD96D0B44D74A99F04367",
+      "block": 10303713,
+      "settledAt": "2026-11-18T07:48:49.992Z",
+      "signatureBytes": 4627,
+      "kemCiphertextBytes": 1568,
+      "sealedBlobBytes": 345,
+      "txs": [
+        {
+          "from": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "to": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "amountUqor": "1",
+          "nonce": 6
+        }
+      ],
+      "deposits": [
+        {
+          "depositor": "0x8B58b1BC07587ab88734f18dEd398682Cb8228D6",
+          "amountUqor": "50000",
+          "tx": "0x5b17a00d4dff713c197d4892d3d65586c4f095744a88c8454d11974bbc90fac7",
+          "cosmosTx": "4B422C39E06CF5DAC58AB216BE980A3DFA96A719C6F69418263F5A77F1E5F717",
+          "block": 10303699
+        }
+      ],
+      "balancesAfter": {
+        "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
+        "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "60000",
+        "0x1111111111111111111111111111111111111111": "15000",
+        "0x2222222222222222222222222222222222222222": "10000",
+        "0x3333333333333333333333333333333333333333": "15000",
+        "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000",
+        "0xd83610d6901d7c1afc1fd749665d01eef9bedb30": "50000",
+        "0x8b58b1bc07587ab88734f18ded398682cb8228d6": "50000"
+      }
+    },
+    {
+      "batchId": 7,
+      "txCount": 1,
+      "stateRoot": "0xf564f2855aa9fa1e4bcce04d306dbdac80b9cb456292df4fd10d23f6948cb927",
+      "prevStateRoot": "0x405e989fbdafe364156bbc244c5643c578dd76cf1802ff10b213f733fd0d3a60",
+      "txDataCommitment": "0x8f1799333c94c7288ce3e6f5e1068d5a55ecad1cc244cd36dd8a2b7a16ec5c60",
+      "encryptedDataHash": "0x75d70b69da097b415ad39df8456899c3157ccdc04e096d76eb5a2f35087ca91a",
+      "digest": "0xdb8f7b828b6f1e48f1bacdcd63a3403041361944b7d5b5be592cea6e6e798182",
+      "receiptHash": "0x262436a1ac0dcbc0b8eaf19592ad2b2bd44b4738eb3be037d0a5cd47929498e1",
+      "submitTx": "0xf2bb705e4588332282937f1de95db5f8fe1425f95ed33292ccc78a8ad8110c35",
+      "cosmosTx": "664CAA8891263CF959BC989E837B232AA98DC1C988AC2DDFEC1E26526F250A6D",
+      "block": 10303763,
+      "settledAt": "2026-11-18T07:50:01.579Z",
+      "signatureBytes": 4627,
+      "kemCiphertextBytes": 1568,
+      "sealedBlobBytes": 345,
+      "txs": [
+        {
+          "from": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "to": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "amountUqor": "1",
+          "nonce": 7
+        }
+      ],
+      "deposits": [
+        {
+          "depositor": "0xaf9eD7049d664B805bcd866A44bA3cc2725F1Ded",
+          "amountUqor": "50000",
+          "tx": "0x2472759ca39e789555f839b34431859dce0c583d945d317254b18141ac799dc6",
+          "cosmosTx": "D027975EBEAE44035214CAD3DF1C0E9A29FF49F649EC96ED91A23A55FFCD0E63",
+          "block": 10303747
+        }
+      ],
+      "balancesAfter": {
+        "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
+        "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "60000",
+        "0x1111111111111111111111111111111111111111": "15000",
+        "0x2222222222222222222222222222222222222222": "10000",
+        "0x3333333333333333333333333333333333333333": "15000",
+        "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000",
+        "0xd83610d6901d7c1afc1fd749665d01eef9bedb30": "50000",
+        "0x8b58b1bc07587ab88734f18ded398682cb8228d6": "50000",
+        "0xaf9ed7049d664b805bcd866a44ba3cc2725f1ded": "50000"
+      }
     }
   ],
   "cycle": {
@@ -399,6 +534,27 @@ export const EVIDENCE: Evidence = {
         "tx": "0xba8dbf221d8db7c4045d67e58df1470a041a0b396bd77811692223befde6592b",
         "cosmosTx": "C9DDAC126294617E2A53EED7C09EDDD060C2CF6330C161586899A8E129A25C45",
         "block": 10256490
+      },
+      {
+        "at": "2026-11-18T07:47:13.002Z",
+        "amountUqor": "50000",
+        "tx": "0xc5c8e525667ddfe023fc39a5fa9261f863783366c375e5c4fd05b605d6dabdcc",
+        "cosmosTx": "C93572935D989D98EAF48DCBE5AB9B050C7E5DA8FB8972F5705579901205B773",
+        "block": 10303644
+      },
+      {
+        "at": "2026-11-18T07:48:30.697Z",
+        "amountUqor": "50000",
+        "tx": "0x5b17a00d4dff713c197d4892d3d65586c4f095744a88c8454d11974bbc90fac7",
+        "cosmosTx": "4B422C39E06CF5DAC58AB216BE980A3DFA96A719C6F69418263F5A77F1E5F717",
+        "block": 10303699
+      },
+      {
+        "at": "2026-11-18T07:49:38.763Z",
+        "amountUqor": "50000",
+        "tx": "0x2472759ca39e789555f839b34431859dce0c583d945d317254b18141ac799dc6",
+        "cosmosTx": "D027975EBEAE44035214CAD3DF1C0E9A29FF49F649EC96ED91A23A55FFCD0E63",
+        "block": 10303747
       }
     ],
     "withdraw": {
@@ -442,6 +598,39 @@ export const EVIDENCE: Evidence = {
         "tx": "0x231d3a550bc5ecdf5e9ff5a52cf7877d6712619a3b5ed81a55db8d8965b17798",
         "cosmosTx": "F80120317E7183546501F3962AE519370E70213DDE93857BB3DF58B4DAEB1196",
         "block": 10256530
+      },
+      {
+        "at": "2026-11-18T07:47:52.647Z",
+        "amountUqor": "50000",
+        "account": "0xD83610d6901d7C1aFC1fD749665D01EeF9bedb30",
+        "batchId": 5,
+        "leaf": "0x543ac1ab1217fa417a6b08b43d5caafef864df7cb37c0be23faf422e26a9318c",
+        "proofSteps": 2,
+        "tx": "0x59b79698a630a95c034ac4627ab3dbab4896b51602ef9175a0e95b2a91142ebe",
+        "cosmosTx": "B61D509AE9B084A127A267D5EEF4DFECB0665299D1F99B2360CFA8E0B328B141",
+        "block": 10303672
+      },
+      {
+        "at": "2026-11-18T07:49:01.092Z",
+        "amountUqor": "50000",
+        "account": "0x8B58b1BC07587ab88734f18dEd398682Cb8228D6",
+        "batchId": 6,
+        "leaf": "0xe726f6e9b62a2ed19cefb7e8280e94966712c6e73c202d802a8498af253bf1c0",
+        "proofSteps": 3,
+        "tx": "0x8cb2542d342efaf67b0af91fe787016901d823a1cfc9a98ba6c568dd8136dd25",
+        "cosmosTx": "314358305D8BED0721922F3EE85D9640A6608485E3701598C10C1DEE0B5DA985",
+        "block": 10303720
+      },
+      {
+        "at": "2026-11-18T07:50:10.319Z",
+        "amountUqor": "50000",
+        "account": "0xaf9eD7049d664B805bcd866A44bA3cc2725F1Ded",
+        "batchId": 7,
+        "leaf": "0xdbfb7050a50db4c8b42e5dae7ea06c8192b7fdcb2dbba4309062bf55b262c83e",
+        "proofSteps": 4,
+        "tx": "0x04d24f6666d34481912f129c45beece1c411fdabd4d344708fc137a03449e6d0",
+        "cosmosTx": "B754222FFC3A3F06114187F52E42DB2FAF55C62EEE1A8E6628A1CD0DE4B21A31",
+        "block": 10303769
       }
     ],
     "reverts": [
@@ -484,9 +673,9 @@ export const EVIDENCE: Evidence = {
   },
   "watchtower": {
     "latest": {
-      "at": "2026-11-17T13:05:31.454Z",
+      "at": "2026-11-18T08:07:45.317Z",
       "allOk": true,
-      "batchCount": 5,
+      "batchCount": 8,
       "decryptCheck": "enabled",
       "results": [
         {
@@ -511,6 +700,21 @@ export const EVIDENCE: Evidence = {
         },
         {
           "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
           "ok": true,
           "failures": []
         }
@@ -560,23 +764,24 @@ export const EVIDENCE: Evidence = {
     "publicKeyPrefix": "0x56a1a674b07c58644adc63bb53e2c144"
   },
   "merkleWithdraw": {
-    "at": "2026-11-17T13:05:09.841Z",
-    "batchId": 4,
-    "account": "0x2837CaC00Ec6Bf9D6334bA717E4d8b1F50C5837f",
-    "stateRoot": "0x32dff944bd0925af967f336ed83916b45f1d2f4620d97aed8c3532e088c58f84",
-    "leaf": "0x168b537093cead3b5de6a4d4b520b6c8054c17d2173fef3d1a97059c699a8cef",
+    "at": "2026-11-18T07:50:10.324Z",
+    "batchId": 7,
+    "account": "0xaf9eD7049d664B805bcd866A44bA3cc2725F1Ded",
+    "stateRoot": "0xf564f2855aa9fa1e4bcce04d306dbdac80b9cb456292df4fd10d23f6948cb927",
+    "leaf": "0xdbfb7050a50db4c8b42e5dae7ea06c8192b7fdcb2dbba4309062bf55b262c83e",
     "proof": [
-      "0x1c1a6df03be0534d8a018f4d0109711615e9f114546669b33649b007c3837d46",
-      "0x78cc85adeb399b78335cd853ed6169bc3c887c4aa505c9313b3c76ad9e36a036",
-      "0xd3ab855a1fb1bb17df7ae3d5c7ddfc477fe7138f70cebc926416d4f09594a6b2"
+      "0xe726f6e9b62a2ed19cefb7e8280e94966712c6e73c202d802a8498af253bf1c0",
+      "0xd3ab855a1fb1bb17df7ae3d5c7ddfc477fe7138f70cebc926416d4f09594a6b2",
+      "0x5b83ecf24e027d2d9c402cbabe355cd8d3fa62271e431e7209ace030df896a31",
+      "0x543ac1ab1217fa417a6b08b43d5caafef864df7cb37c0be23faf422e26a9318c"
     ],
-    "proofSteps": 3,
+    "proofSteps": 4,
     "amountUqor": "50000",
     "withdrawnBefore": "0",
     "withdrawnAfter": "50000",
-    "tx": "0x231d3a550bc5ecdf5e9ff5a52cf7877d6712619a3b5ed81a55db8d8965b17798",
-    "cosmosTx": "F80120317E7183546501F3962AE519370E70213DDE93857BB3DF58B4DAEB1196",
-    "block": 10256530,
+    "tx": "0x04d24f6666d34481912f129c45beece1c411fdabd4d344708fc137a03449e6d0",
+    "cosmosTx": "B754222FFC3A3F06114187F52E42DB2FAF55C62EEE1A8E6628A1CD0DE4B21A31",
+    "block": 10303769,
     "note": "Merkle-proof withdrawal against a settled batch state root — no sequencer involvement."
   }
 };
