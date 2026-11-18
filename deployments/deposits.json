@@ -41,9 +41,48 @@
       "recordedAt": "2026-11-17T13:04:21.805Z",
       "cosmosTx": "C9DDAC126294617E2A53EED7C09EDDD060C2CF6330C161586899A8E129A25C45",
       "creditedAt": "2026-11-17T13:04:43.466Z"
+    },
+    {
+      "depositor": "0xD83610d6901d7C1aFC1fD749665D01EeF9bedb30",
+      "amountUqor": "50000",
+      "amountWei": "50000000000000000",
+      "tx": "0xc5c8e525667ddfe023fc39a5fa9261f863783366c375e5c4fd05b605d6dabdcc",
+      "block": 10303644,
+      "logIndex": 0,
+      "status": "settled",
+      "creditedInBatch": 5,
+      "recordedAt": "2026-11-18T07:47:16.940Z",
+      "cosmosTx": "C93572935D989D98EAF48DCBE5AB9B050C7E5DA8FB8972F5705579901205B773",
+      "creditedAt": "2026-11-18T07:47:38.222Z"
+    },
+    {
+      "depositor": "0x8B58b1BC07587ab88734f18dEd398682Cb8228D6",
+      "amountUqor": "50000",
+      "amountWei": "50000000000000000",
+      "tx": "0x5b17a00d4dff713c197d4892d3d65586c4f095744a88c8454d11974bbc90fac7",
+      "block": 10303699,
+      "logIndex": 0,
+      "status": "settled",
+      "creditedInBatch": 6,
+      "recordedAt": "2026-11-18T07:48:35.251Z",
+      "cosmosTx": "4B422C39E06CF5DAC58AB216BE980A3DFA96A719C6F69418263F5A77F1E5F717",
+      "creditedAt": "2026-11-18T07:48:49.994Z"
+    },
+    {
+      "depositor": "0xaf9eD7049d664B805bcd866A44bA3cc2725F1Ded",
+      "amountUqor": "50000",
+      "amountWei": "50000000000000000",
+      "tx": "0x2472759ca39e789555f839b34431859dce0c583d945d317254b18141ac799dc6",
+      "block": 10303747,
+      "logIndex": 1,
+      "status": "settled",
+      "creditedInBatch": 7,
+      "recordedAt": "2026-11-18T07:49:44.622Z",
+      "cosmosTx": "D027975EBEAE44035214CAD3DF1C0E9A29FF49F649EC96ED91A23A55FFCD0E63",
+      "creditedAt": "2026-11-18T07:50:01.581Z"
     }
   ],
-  "lastProcessedBlock": 10300710,
+  "lastProcessedBlock": 10303751,
   "network": "qorechain-diana",
   "note": "Deposit watcher state (scripts/deposit-watcher.ts). Deposits are identified by (transaction hash, log index); a deposit already recorded here is never credited again, however often the watcher re-scans. Statuses: pending (seen on-chain, awaiting the next settle), settled (credited by a batch), genesis (credited by hand before the watcher existed), skipped (seen but not creditable — e.g. a non-whole-uqor amount; funds stay in the contract)."
 }

@@ -4,12 +4,15 @@ A minimal post-quantum rollup on QoreChain — a Protocol Builders entry
 for the QoreChain Developer Fest ("Build Before Q-Day").
 
 **Status:** live on the Diana testnet (v2). Settlement contract
-deployed, 5 batches settled with ML-DSA-87 signatures verified
+deployed, 8 batches settled with ML-DSA-87 signatures verified
 on-chain, L1 deposits flow into rollup balances automatically via the
 deposit watcher (no hand-seeding), a Merkle-proof withdrawal of
-0.3 QOR closed the auto-deposit cycle, double-withdraw and
-tampered-proof attacks reverted on-chain, and the watchtower verifies
-all batches clean — including the deposit credit check.
+0.3 QOR closed the auto-deposit cycle, four fresh-account
+deposit → batch → withdraw cycles completed end to end,
+double-withdraw, tampered-proof, forged-batch, replay,
+wrong-account and stale-batch attacks all reverted on-chain, and
+the watchtower verifies all batches clean — including the deposit
+credit check.
 
 - Project page: https://build.qorechain.io/p/qorerollup
 - Demo site: https://andipangeranm142.github.io/qorerollup/
@@ -75,12 +78,19 @@ settles them on the QoreChain Diana testnet with post-quantum security:
   account deposited 0.05 QOR, batch #4 credited it, and the account
   withdrew the full 0.05 QOR against batch #4's state root — again
   with no sequencer involvement. (Run by the builder as a
-  fresh-account test, not an independent outsider test.)
+  fresh-account test, not an independent outsider test.) Three more
+  fresh-account cycles followed the same guide end to end on
+  18 Nov 2026 (batches #5, #6, #7 — three distinct fresh wallets,
+  0.05 QOR each, every withdrawal with no sequencer involvement),
+  and three more attack demos reverted on-chain the same day: a
+  replayed batch (`InvalidBatchSignature`), a withdrawal with
+  another account's valid proof (`InvalidMerkleProof`), and a
+  withdrawal against a nonexistent batch id (`BatchNotFound`).
 - [x] Verified settlement receipt — each batch gets a `receiptHash`
   (`keccak256("QoreRollup.receipt", chainid, contract, batchId,
   stateRoot, txDataCommitment)`), emitted in `BatchSettled` and
   re-verified by the watchtower.
-- [x] Watchtower — `npm run watchtower` verifies all 5 batches OK
+- [x] Watchtower — `npm run watchtower` verifies all 8 batches OK
   (signature, state replay, Merkle tree + proofs, receipt, decrypt
   check, genesis-funding cross-check, deposit credit check — every
   credited deposit matched against the on-chain `Deposited` logs,
@@ -137,7 +147,7 @@ are proven against it. The v1 history (3 batches, 1 withdrawal, 1
 forged-batch revert) is real on-chain activity and is archived in
 [deployments/v1/](deployments/v1/).
 
-## Live usage (17 Nov 2026, all on Diana)
+## Live usage (17–18 Nov 2026, all on Diana)
 
 Full step log with hashes: [deployments/usage.json](deployments/usage.json).
 Per-batch detail (txs, state roots, leaves, proofs, signatures,
@@ -160,12 +170,25 @@ ciphertexts): [deployments/batches/](deployments/batches/).
 | Deposit (fresh-account test) | 0.05 QOR from a fresh account — picked up by the deposit watcher and credited by batch #4 | `0xba8dbf221d8db7c4045d67e58df1470a041a0b396bd77811692223befde6592b` | [`C9DDAC126294617E2A53EED7C09EDDD060C2CF6330C161586899A8E129A25C45`](https://explore.qore.network/tx/C9DDAC126294617E2A53EED7C09EDDD060C2CF6330C161586899A8E129A25C45) | 10256490 | Success |
 | Batch #4 | 1 deposit (50,000 uqor, auto-credited) + 1 tx: sequencer self-transfer, 1 uqor (6 leaves) | `0x3dc38a1ca1a71b8bb86325b19ce65eee7a1a33df073a700dc30aa431737b56c9` | [`2B760E67ADE8D0741BA85E203D1261304661ABCE36FF904933B4705F8508FEDD`](https://explore.qore.network/tx/2B760E67ADE8D0741BA85E203D1261304661ABCE36FF904933B4705F8508FEDD) | 10256512 | Success |
 | **Merkle withdrawal (fresh-account test)** | **Fresh account withdraws 0.05 QOR with a Merkle proof against batch #4 — its full leaf balance; no sequencer involvement** | `0x231d3a550bc5ecdf5e9ff5a52cf7877d6712619a3b5ed81a55db8d8965b17798` | [`F80120317E7183546501F3962AE519370E70213DDE93857BB3DF58B4DAEB1196`](https://explore.qore.network/tx/F80120317E7183546501F3962AE519370E70213DDE93857BB3DF58B4DAEB1196) | 10256530 | Success |
+| Deposit (fresh-account test, 18 Nov) | 0.05 QOR from a second fresh account (`0xD836…bdb30`) — picked up by the deposit watcher and credited by batch #5 | `0xc5c8e525667ddfe023fc39a5fa9261f863783366c375e5c4fd05b605d6dabdcc` | [`C93572935D989D98EAF48DCBE5AB9B050C7E5DA8FB8972F5705579901205B773`](https://explore.qore.network/tx/C93572935D989D98EAF48DCBE5AB9B050C7E5DA8FB8972F5705579901205B773) | 10303644 | Success |
+| Batch #5 | 1 deposit (50,000 uqor, auto-credited) + 1 tx: sequencer self-transfer, 1 uqor (7 leaves) | `0xb9968a9f9a90b7e29ddc57e2aeb2ae2e59320e08080518afc35d409c28359e74` | [`745A2FFCA67F8B26E0BB430D23B069AB11620378A2E729EF13A6DF1163E3F71C`](https://explore.qore.network/tx/745A2FFCA67F8B26E0BB430D23B069AB11620378A2E729EF13A6DF1163E3F71C) | 10303663 | Success |
+| **Merkle withdrawal (fresh-account test, 18 Nov)** | **Fresh account withdraws 0.05 QOR with a 2-element Merkle proof against batch #5 — its full leaf balance; no sequencer involvement** | `0x59b79698a630a95c034ac4627ab3dbab4896b51602ef9175a0e95b2a91142ebe` | [`B61D509AE9B084A127A267D5EEF4DFECB0665299D1F99B2360CFA8E0B328B141`](https://explore.qore.network/tx/B61D509AE9B084A127A267D5EEF4DFECB0665299D1F99B2360CFA8E0B328B141) | 10303672 | Success |
+| Deposit (fresh-account test, 18 Nov) | 0.05 QOR from a third fresh account (`0x8B58…28D6`) — picked up by the deposit watcher and credited by batch #6 | `0x5b17a00d4dff713c197d4892d3d65586c4f095744a88c8454d11974bbc90fac7` | [`4B422C39E06CF5DAC58AB216BE980A3DFA96A719C6F69418263F5A77F1E5F717`](https://explore.qore.network/tx/4B422C39E06CF5DAC58AB216BE980A3DFA96A719C6F69418263F5A77F1E5F717) | 10303699 | Success |
+| Batch #6 | 1 deposit (50,000 uqor, auto-credited) + 1 tx: sequencer self-transfer, 1 uqor (8 leaves) | `0x20047440306e0c822636eacb5b148a89ed4194bb30fad8d9237bb0abec3691d7` | [`7D739865D7BB212E96D7286E3933E38CBF90239D7C2DD96D0B44D74A99F04367`](https://explore.qore.network/tx/7D739865D7BB212E96D7286E3933E38CBF90239D7C2DD96D0B44D74A99F04367) | 10303713 | Success |
+| **Merkle withdrawal (fresh-account test, 18 Nov)** | **Fresh account withdraws 0.05 QOR with a 3-element Merkle proof against batch #6 — its full leaf balance; no sequencer involvement** | `0x8cb2542d342efaf67b0af91fe787016901d823a1cfc9a98ba6c568dd8136dd25` | [`314358305D8BED0721922F3EE85D9640A6608485E3701598C10C1DEE0B5DA985`](https://explore.qore.network/tx/314358305D8BED0721922F3EE85D9640A6608485E3701598C10C1DEE0B5DA985) | 10303720 | Success |
+| Deposit (fresh-account test, 18 Nov) | 0.05 QOR from a fourth fresh account (`0xaf9e…1Ded`) — picked up by the deposit watcher and credited by batch #7 | `0x2472759ca39e789555f839b34431859dce0c583d945d317254b18141ac799dc6` | [`D027975EBEAE44035214CAD3DF1C0E9A29FF49F649EC96ED91A23A55FFCD0E63`](https://explore.qore.network/tx/D027975EBEAE44035214CAD3DF1C0E9A29FF49F649EC96ED91A23A55FFCD0E63) | 10303747 | Success |
+| Batch #7 | 1 deposit (50,000 uqor, auto-credited) + 1 tx: sequencer self-transfer, 1 uqor (9 leaves) | `0xf2bb705e4588332282937f1de95db5f8fe1425f95ed33292ccc78a8ad8110c35` | [`664CAA8891263CF959BC989E837B232AA98DC1C988AC2DDFEC1E26526F250A6D`](https://explore.qore.network/tx/664CAA8891263CF959BC989E837B232AA98DC1C988AC2DDFEC1E26526F250A6D) | 10303763 | Success |
+| **Merkle withdrawal (fresh-account test, 18 Nov)** | **Fresh account withdraws 0.05 QOR with a 4-element Merkle proof against batch #7 — its full leaf balance; no sequencer involvement** | `0x04d24f6666d34481912f129c45beece1c411fdabd4d344708fc137a03449e6d0` | [`B754222FFC3A3F06114187F52E42DB2FAF55C62EEE1A8E6628A1CD0DE4B21A31`](https://explore.qore.network/tx/B754222FFC3A3F06114187F52E42DB2FAF55C62EEE1A8E6628A1CD0DE4B21A31) | 10303769 | Success |
+| **Replay (attack demo, 18 Nov)** | Already-settled batch #7 resubmitted verbatim (same state root, commitments and ML-DSA-87 signature) — **REVERTED on-chain** (`InvalidBatchSignature`): the signature binds to batch id 7, not the next id 8; `batchCount` unchanged | `0x2a1d8d6f7ff18dfecf10e5d8a3bc2c6765559107bca65fa7568dd31b537b49bc` | [`80F2265EE0625AB6CAE1D9E30ADEFADFE61A54468909FFF355BA2627BBCE16E8`](https://explore.qore.network/tx/80F2265EE0625AB6CAE1D9E30ADEFADFE61A54468909FFF355BA2627BBCE16E8) | 10303817 | **Reverted** |
+| **Wrong-account (attack demo, 18 Nov)** | Withdrawal with a VALID proof belonging to a different account (caller's own address, victim's balance/nonce/proof from batch #5) — **REVERTED on-chain** (`InvalidMerkleProof`), cumulative cap unchanged | `0xd530a6917ba8ef1432ad05554e4ab6af21281494d9a51bb68f13924f351e59bb` | [`2A72154B904B80B8018213FE8966949B691D5F101FE6772A4FEDE3D898D50C6C`](https://explore.qore.network/tx/2A72154B904B80B8018213FE8966949B691D5F101FE6772A4FEDE3D898D50C6C) | 10303828 | **Reverted** |
+| **Stale-batch (attack demo, 18 Nov)** | Withdrawal against nonexistent batch id 999 with the caller's own valid leaf data from batch #5 — **REVERTED on-chain** (`BatchNotFound`), cumulative cap unchanged | `0xecd1fadd71378a69560b0289009c934229a4d1e33fb199809dde2dff94848e14` | [`4F5D2354318D8506CC1933C958172D0EB3D03AD695AC165F514217FC87D75E8F`](https://explore.qore.network/tx/4F5D2354318D8506CC1933C958172D0EB3D03AD695AC165F514217FC87D75E8F) | 10303835 | **Reverted** |
 
-Note on the fresh-account test (17 Nov 2026): the deposit, batch #4
-and withdrawal above followed [OUTSIDER_TEST.md](OUTSIDER_TEST.md)
-end to end, but were run by the builder with a fresh wallet — this is
-a fresh-account test, NOT an independent outsider test. A genuinely
-independent tester has not tried the project yet.
+Note on the fresh-account tests (17–18 Nov 2026): the deposits,
+batches #4–#7 and withdrawals above followed
+[OUTSIDER_TEST.md](OUTSIDER_TEST.md) end to end, but were run by the
+builder with fresh wallets — these are fresh-account tests, NOT
+independent outsider tests. A genuinely independent tester has not
+tried the project yet.
 
 Every transaction above has two hash forms: the EVM hash (as returned
 by the RPC) and the Cosmos/native hash (as shown by the explorer — the
@@ -173,18 +196,20 @@ explorer links use it). The same hashes are recorded in
 [deployments/usage.json](deployments/usage.json) and
 [deployments/testnet.json](deployments/testnet.json).
 
-Final on-chain state (verified by independent read): `batchCount` 5,
-`totalDeposited` 0.45 QOR, `totalWithdrawn` 0.40 QOR,
+Final on-chain state (verified by independent read): `batchCount` 8,
+`totalDeposited` 0.60 QOR, `totalWithdrawn` 0.55 QOR,
 `withdrawnAmount[deployer]` 300,000 uqor, `withdrawnAmount[user]`
-50,000 uqor, `withdrawnAmount[fresh test account]` 50,000 uqor,
-`deposits[deployer]` 0.4 QOR, `deposits[fresh test account]` 0.05 QOR
-(v2 withdrawals do not touch the L1 deposit ledger), contract balance
-0.05 QOR. Final rollup balances: deployer 300,000 uqor, user wallet
-60,000, `0x1111…1111` 15,000, `0x2222…2222` 10,000,
-`0x3333…3333` 15,000, fresh test account 50,000 (total 450,000 —
-conserved from the 0.45 QOR deposited). Solvency: the remaining
-withdrawable amounts (leaf balance minus `withdrawnAmount` per
-account) total exactly 50,000 uqor — the contract's balance.
+50,000 uqor, `withdrawnAmount[each fresh test account]` 50,000 uqor
+(four fresh accounts: the 17 Nov one and the three 18 Nov ones),
+`deposits[deployer]` 0.4 QOR, `deposits[each fresh test account]`
+0.05 QOR (v2 withdrawals do not touch the L1 deposit ledger),
+contract balance 0.05 QOR. Final rollup balances: deployer 300,000
+uqor, user wallet 60,000, `0x1111…1111` 15,000,
+`0x2222…2222` 10,000, `0x3333…3333` 15,000, each fresh test account
+50,000 (total 600,000 — conserved from the 0.60 QOR deposited).
+Solvency: the remaining withdrawable amounts (leaf balance minus
+`withdrawnAmount` per account) total exactly 50,000 uqor — the
+contract's balance.
 
 L1 deposits are auto-credited: the deposit watcher
 (`npm run deposit-watcher`) reads `Deposited` events from the
@@ -228,17 +253,18 @@ can be checked independently:
    show up until you switch. Then paste any Cosmos hash from the
    table into the search box (or click its link): you will see the
    transaction, its block number, and whether it succeeded or
-   reverted. The three attack demos (double-withdraw, tampered
-   proof, forged batch) show as failed transactions at blocks
-   10250203, 10250208 and 10250217.
+   reverted. The six attack demos (double-withdraw, tampered
+   proof, forged batch, replay, wrong-account, stale-batch) show
+   as failed transactions at blocks 10250203, 10250208, 10250217,
+   10303817, 10303828 and 10303835.
 2. **Check the contract state.** Open the settlement contract
    `0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708` on the explorer
-   (Testnet): `batchCount` 5, `totalDeposited` 0.45 QOR,
-   `totalWithdrawn` 0.40 QOR, contract balance 0.05 QOR.
+   (Testnet): `batchCount` 8, `totalDeposited` 0.60 QOR,
+   `totalWithdrawn` 0.55 QOR, contract balance 0.05 QOR.
 3. **Re-run the tests.** `npm install && npm test` — 150 tests pass
    (Hardhat; the contract tests run against mock precompiles, the
    off-chain tests use real ML-DSA-87 and ML-KEM-1024 crypto).
-4. **Re-run the watchtower.** `npm run watchtower` re-verifies all 5
+4. **Re-run the watchtower.** `npm run watchtower` re-verifies all 8
    settled batches against the on-chain records — signatures, state
    replay, Merkle trees and proofs, receipts, decrypt check, and the
    deposit credit checks — and prints ALL BATCHES OK. It needs only
