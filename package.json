@@ -47,6 +47,7 @@
     "usage": "tsx --env-file=../.env scripts/usage.ts",
     "merkle-withdraw": "tsx --env-file=../.env.user scripts/merkle-withdraw.ts",
     "watchtower": "tsx --env-file=../.env scripts/watchtower.ts",
+    "watchtower-status": "tsx scripts/watchtower-status.ts",
     "window": "tsx --env-file=../.env scripts/window.ts",
     "forged-batch": "tsx --env-file=../.env scripts/forged-batch.ts",
     "revert-demos": "tsx --env-file=../.env scripts/revert-demos.ts"

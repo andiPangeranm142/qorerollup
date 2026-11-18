@@ -66,6 +66,13 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 const errors = [];
+// URLs that answered 404: the watchtower-status fetch is best-effort by
+// design (see below), so its 404 needs to be distinguishable from a
+// genuinely broken asset.
+const notFoundUrls = new Set();
+page.on("response", (res) => {
+  if (res.status() === 404) notFoundUrls.add(res.url());
+});
 page.on("console", (msg) => {
   if (msg.type() === "error") errors.push(`console: ${msg.text()}`);
 });
@@ -81,6 +88,12 @@ await page.waitForFunction(
   () => !document.body.innerText.includes("Reading the chain…"),
   { timeout: 30000 },
 );
+// Same for the watchtower-status fetch (live file or embedded fallback):
+// the status line must have settled before the screenshot and the checks.
+await page.waitForFunction(
+  () => !document.body.innerText.includes("Checking the live watchtower status…"),
+  { timeout: 30000 },
+);
 await page.waitForSelector('[data-testid="batch-3"]', { timeout: 30000 });
 await page.screenshot({ path: screenshotPath, fullPage: true });
 
@@ -91,6 +104,7 @@ const batchCards = await page.locator(".batch-card").count(); // not [data-testi
 const statValue = async (testid) =>
   (await page.locator(`[data-testid="${testid}"] .stat-value`).innerText()).trim();
 const batchCountValue = await statValue("batch-count");
+const lastBatchValue = await statValue("last-batch");
 const depositedValue = await statValue("total-deposited");
 const withdrawnValue = await statValue("total-withdrawn");
 const deployerDepositValue = await statValue("deployer-deposit");
@@ -105,10 +119,15 @@ const checks = {
   "contract address v2": text.includes("0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708"),
   "no v1 contract": !text.includes("0x96051b69"),
   "no nullifier text": !text.toLowerCase().includes("nullifier"),
-  "batchCount 5": batchCountValue === "5",
+  // Live values, read from the chain at render time — update these when a
+  // new batch lands (batches 5–7 settled 18 Nov 2026: 8 / 0.6 / 0.55).
+  // The batch CARDS below still come from the evidence file (5 batches
+  // in this branch until the new batch evidence is merged).
+  "batchCount 8": batchCountValue === "8",
+  "last batch id 7": lastBatchValue === "7",
   "5 batch cards": batchCards === 5,
-  "total deposited 0.45 QOR": depositedValue === "0.45 QOR",
-  "total withdrawn 0.4 QOR": withdrawnValue === "0.4 QOR",
+  "total deposited 0.6 QOR": depositedValue === "0.6 QOR",
+  "total withdrawn 0.55 QOR": withdrawnValue === "0.55 QOR",
   "deployer deposit 0.4 QOR": deployerDepositValue === "0.4 QOR",
   "contract balance 0.05 QOR": contractBalanceValue === "0.05 QOR",
   "150 Hardhat tests": text.includes("150 Hardhat tests"),
@@ -130,6 +149,9 @@ const checks = {
     text.includes("Deposit-credit check OK") &&
     text.includes("never exceed supporting L1 deposits"),
   "batch #3 card deposit link is cosmos (not EVM)": batch3DepositCosmosLink > 0,
+  "watchtower live-status line (live file or embedded fallback)":
+    text.includes("Live status — last run") ||
+    text.includes("Live watchtower status unavailable"),
   "watchtower latest batch #4 OK": text.includes("Latest batch #4: ✓ OK"),
   "watchtower ALL BATCHES OK": text.includes("ALL BATCHES OK"),
   "watchtower 5/5": text.includes("5/5 batches verified"),
@@ -172,9 +194,31 @@ for (const [name, passed] of Object.entries(checks)) {
   if (passed) passCount += 1;
   else ok = false;
 }
-if (errors.length) {
+// The watchtower-status fetch is best-effort by design: until the status
+// file is published on main it 404s, and Chromium logs that as a console
+// error even though the app handles it via the embedded fallback. Ignore
+// that one console 404 — but ONLY when the watchtower-status URL is the
+// sole 404 on the page, so a genuinely broken asset still fails the check.
+const onlyWt404 =
+  notFoundUrls.size > 0 &&
+  [...notFoundUrls].every((u) => u.endsWith("/deployments/watchtower-status.json"));
+const realErrors = errors.filter(
+  (e) =>
+    !(
+      onlyWt404 &&
+      e.startsWith(
+        "console: Failed to load resource: the server responded with a status of 404",
+      )
+    ),
+);
+if (onlyWt404 && realErrors.length < errors.length) {
+  console.log(
+    "NOTE ignoring the expected 404 console error for the not-yet-published watchtower-status.json",
+  );
+}
+if (realErrors.length) {
   console.log("ERRORS:");
-  for (const e of errors) console.log(`  ${e}`);
+  for (const e of realErrors) console.log(`  ${e}`);
   ok = false;
 } else {
   console.log("PASS no console/page/request errors");

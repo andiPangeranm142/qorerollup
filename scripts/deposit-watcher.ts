@@ -30,12 +30,20 @@
  *
  * Read-only: it sends no transactions and needs no secrets or env vars.
  * It appends one step per run to deployments/usage.json (the run log).
+ *
+ * After each scan it also publishes the watchtower status
+ * (deployments/watchtower-status.json) via scripts/watchtower-status.ts,
+ * so the demo's live watchtower panel stays fresh on the watcher's
+ * schedule. That step is best-effort: a failing verification (or a
+ * missing build artifact) is logged as a warning and never fails the
+ * deposit scan — the status file itself records verification failures.
  */
 import { createEvmClient } from "@qorechain/evm";
 import { parseAbi, type Address, type Hex } from "viem";
 import fs from "node:fs";
 import path from "node:path";
 import { cosmosHashForEvmTx } from "./cosmos-hash";
+import { publishWatchtowerStatus } from "./watchtower-status";
 import {
   checkCreditedTotal,
   mergeDeposits,
@@ -267,6 +275,16 @@ async function main(): Promise<void> {
     totalDepositedUqor: totalDepositedUqor.toString(),
   });
   console.log("Run recorded in deployments/usage.json.");
+
+  // Publish the fresh watchtower status for the demo (best effort — see
+  // the header: this must never fail the deposit scan).
+  try {
+    await publishWatchtowerStatus();
+  } catch (err) {
+    console.log(
+      `  warn: could not publish the watchtower status (${err instanceof Error ? err.message : err}) — the previous status file (if any) is unchanged.`,
+    );
+  }
 }
 
 main().catch((err: unknown) => {
