@@ -76,6 +76,10 @@ export type RevertEvidence = {
   receiptStatus: string;
   withdrawnBefore: string | null;
   withdrawnAfter: string | null;
+  fakeBatchId: number | null;
+  replayedBatchId: number | null;
+  batchCountBefore: number | null;
+  batchCountAfter: number | null;
 };
 
 export type Evidence = {
@@ -644,7 +648,11 @@ export const EVIDENCE: Evidence = {
         "block": 10250203,
         "receiptStatus": "reverted",
         "withdrawnBefore": "50000",
-        "withdrawnAfter": "50000"
+        "withdrawnAfter": "50000",
+        "fakeBatchId": null,
+        "replayedBatchId": null,
+        "batchCountBefore": null,
+        "batchCountAfter": null
       },
       {
         "at": "2026-11-17T10:34:35.340Z",
@@ -656,7 +664,59 @@ export const EVIDENCE: Evidence = {
         "block": 10250208,
         "receiptStatus": "reverted",
         "withdrawnBefore": "50000",
-        "withdrawnAfter": "50000"
+        "withdrawnAfter": "50000",
+        "fakeBatchId": null,
+        "replayedBatchId": null,
+        "batchCountBefore": null,
+        "batchCountAfter": null
+      },
+      {
+        "at": "2026-11-18T07:51:18.828Z",
+        "reason": "replay",
+        "error": "InvalidBatchSignature",
+        "batchId": 7,
+        "tx": "0x2a1d8d6f7ff18dfecf10e5d8a3bc2c6765559107bca65fa7568dd31b537b49bc",
+        "cosmosTx": "80F2265EE0625AB6CAE1D9E30ADEFADFE61A54468909FFF355BA2627BBCE16E8",
+        "block": 10303817,
+        "receiptStatus": "reverted",
+        "withdrawnBefore": null,
+        "withdrawnAfter": null,
+        "fakeBatchId": null,
+        "replayedBatchId": 7,
+        "batchCountBefore": 8,
+        "batchCountAfter": 8
+      },
+      {
+        "at": "2026-11-18T07:51:35.372Z",
+        "reason": "wrong-account",
+        "error": "InvalidMerkleProof",
+        "batchId": 5,
+        "tx": "0xd530a6917ba8ef1432ad05554e4ab6af21281494d9a51bb68f13924f351e59bb",
+        "cosmosTx": "2A72154B904B80B8018213FE8966949B691D5F101FE6772A4FEDE3D898D50C6C",
+        "block": 10303828,
+        "receiptStatus": "reverted",
+        "withdrawnBefore": "50000",
+        "withdrawnAfter": "50000",
+        "fakeBatchId": null,
+        "replayedBatchId": null,
+        "batchCountBefore": null,
+        "batchCountAfter": null
+      },
+      {
+        "at": "2026-11-18T07:51:43.683Z",
+        "reason": "stale-batch",
+        "error": "BatchNotFound",
+        "batchId": 5,
+        "tx": "0xecd1fadd71378a69560b0289009c934229a4d1e33fb199809dde2dff94848e14",
+        "cosmosTx": "4F5D2354318D8506CC1933C958172D0EB3D03AD695AC165F514217FC87D75E8F",
+        "block": 10303835,
+        "receiptStatus": "reverted",
+        "withdrawnBefore": "50000",
+        "withdrawnAfter": "50000",
+        "fakeBatchId": 999,
+        "replayedBatchId": null,
+        "batchCountBefore": null,
+        "batchCountAfter": null
       }
     ],
     "forged": {
@@ -673,7 +733,7 @@ export const EVIDENCE: Evidence = {
   },
   "watchtower": {
     "latest": {
-      "at": "2026-11-18T08:07:45.317Z",
+      "at": "2026-11-18T08:15:57.722Z",
       "allOk": true,
       "batchCount": 8,
       "decryptCheck": "enabled",

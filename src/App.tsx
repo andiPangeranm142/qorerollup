@@ -494,6 +494,10 @@ export function App() {
         <p className="test-suite" data-testid="test-suite">
           ✓ 150 Hardhat tests passing · {t.batchCount} batches settled on the Diana testnet
         </p>
+        <p className="test-suite" data-testid="auto-settle">
+          ✓ Auto-settle active: a new batch settles on its own every 6 hours whenever
+          deposits are pending
+        </p>
         <div className="contract-box" data-testid="contract">
           <span>Settlement contract (chain id {EVIDENCE.chainId})</span>
           <a href={EVIDENCE.explorerContract} target="_blank" rel="noreferrer" className="mono big">
@@ -654,9 +658,10 @@ export function App() {
       <section data-testid="full-cycle">
         <h2>Full cycle — deposit → batches → Merkle withdrawal → reverted attacks</h2>
         <p>
-          Every step below is a real transaction on the Diana testnet (17 Nov 2026), in
-          chronological order — the genesis cycle first, then the auto-credit cycle (deposit
-          0.1 QOR → batch #3 → deployer withdrawal).
+          Every step below is a real transaction on the Diana testnet, in chronological
+          order — the genesis cycle first, then the auto-credit cycle (deposit 0.1 QOR →
+          batch #3 → deployer withdrawal), then four fresh-account cycles (batches #4–#7).
+          Six full cycles in total.
         </p>
         <ol className="cycle">
           {cycleSteps.map((step) => {
@@ -739,22 +744,45 @@ export function App() {
             }
             if (step.kind === "revert") {
               const r = step.revert;
+              const REVERT_COPY: Record<string, { title: string; body: string }> = {
+                "double-withdraw": {
+                  title: "Double-withdraw (attack demo) — REVERTED on-chain",
+                  body: "the same Merkle-proof withdrawal sent again — the cumulative cap already covers the leaf balance. The contract rejected it",
+                },
+                "tampered-proof": {
+                  title: "Tampered proof (attack demo) — REVERTED on-chain",
+                  body: "a withdrawal with one flipped hex char in the proof — it no longer verifies against the state root. The contract rejected it",
+                },
+                replay: {
+                  title: "Replayed batch (attack demo) — REVERTED on-chain",
+                  body: `an already-settled batch (#${r.replayedBatchId ?? "—"}) resubmitted verbatim — the signature binds to the next batch id, so it cannot verify. The contract rejected it`,
+                },
+                "wrong-account": {
+                  title: "Wrong-account withdrawal (attack demo) — REVERTED on-chain",
+                  body: "a withdrawal with a valid Merkle proof belonging to a different account — the caller's leaf is not in the tree. The contract rejected it",
+                },
+                "stale-batch": {
+                  title: "Stale batch id (attack demo) — REVERTED on-chain",
+                  body: `a withdrawal against batch id ${r.fakeBatchId ?? "—"}, which does not exist — the batch check fails before the proof is examined. The contract rejected it`,
+                },
+              };
+              const copy = REVERT_COPY[r.reason] ?? {
+                title: `${r.reason} (attack demo) — REVERTED on-chain`,
+                body: "the contract rejected it",
+              };
               return (
                 <li className="revert" key={r.reason}>
-                  <strong>
-                    {r.reason === "double-withdraw"
-                      ? "Double-withdraw (attack demo) — REVERTED on-chain"
-                      : "Tampered proof (attack demo) — REVERTED on-chain"}
-                  </strong>{" "}
-                  —{" "}
-                  {r.reason === "double-withdraw"
-                    ? "the same Merkle-proof withdrawal sent again — the cumulative cap already covers the leaf balance. The contract rejected it"
-                    : "a withdrawal with one flipped hex char in the proof — it no longer verifies against the state root. The contract rejected it"}{" "}
-                  (<code>{r.error}</code>): receipt status <code>{r.receiptStatus}</code>
+                  <strong>{copy.title}</strong> — {copy.body} (<code>{r.error}</code>):
+                  receipt status <code>{r.receiptStatus}</code>
                   {r.withdrawnBefore !== null && r.withdrawnAfter !== null && (
                     <>
                       , cumulative withdrawnAmount stayed at{" "}
                       {Number(r.withdrawnAfter).toLocaleString("en-US")} uqor
+                    </>
+                  )}
+                  {r.batchCountBefore !== null && r.batchCountAfter !== null && (
+                    <>
+                      , batchCount stayed at {r.batchCountBefore} → {r.batchCountAfter}
                     </>
                   )}
                   .{" "}

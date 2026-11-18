@@ -59,19 +59,45 @@ const seed = step("seed-state");
 // contract's revert reasons (see README Live usage table).
 const REVERT_ERROR = { "double-withdraw": "ZeroWithdraw", "tampered-proof": "InvalidMerkleProof" };
 const reverts = usage.steps
-  .filter((s) => s.command === "merkle-withdraw-revert")
-  .map((s) => ({
-    at: s.at,
-    reason: s.reason,
-    error: REVERT_ERROR[s.reason] ?? "reverted",
-    batchId: s.batchId,
-    tx: s.tx,
-    cosmosTx: s.cosmosTx,
-    block: s.block,
-    receiptStatus: s.receiptStatus,
-    withdrawnBefore: s.withdrawnAmountBefore ?? null,
-    withdrawnAfter: s.withdrawnAmountAfter ?? null,
-  }));
+  .filter((s) => s.command === "merkle-withdraw-revert" || s.command === "revert-demo")
+  .map((s) => {
+    if (s.command === "revert-demo") {
+      // 18 Nov attack demos (replay / wrong-account / stale-batch): the demo
+      // name is the reason and expectedReason is the contract revert reason.
+      return {
+        at: s.at,
+        reason: s.demo,
+        error: s.expectedReason ?? "reverted",
+        batchId: s.batchId ?? s.replayedBatchId ?? 0,
+        tx: s.tx,
+        cosmosTx: s.cosmosTx,
+        block: s.block,
+        receiptStatus: s.receiptStatus,
+        withdrawnBefore: s.withdrawnAmountBefore ?? null,
+        withdrawnAfter: s.withdrawnAmountAfter ?? null,
+        fakeBatchId: s.fakeBatchId ?? null,
+        replayedBatchId: s.replayedBatchId ?? null,
+        batchCountBefore: s.batchCountBefore ?? null,
+        batchCountAfter: s.batchCountAfter ?? null,
+      };
+    }
+    return {
+      at: s.at,
+      reason: s.reason,
+      error: REVERT_ERROR[s.reason] ?? "reverted",
+      batchId: s.batchId,
+      tx: s.tx,
+      cosmosTx: s.cosmosTx,
+      block: s.block,
+      receiptStatus: s.receiptStatus,
+      withdrawnBefore: s.withdrawnAmountBefore ?? null,
+      withdrawnAfter: s.withdrawnAmountAfter ?? null,
+      fakeBatchId: null,
+      replayedBatchId: null,
+      batchCountBefore: null,
+      batchCountAfter: null,
+    };
+  });
 
 // Byte length of a 0x-prefixed hex string.
 const hexBytes = (h) => (h.startsWith("0x") ? (h.length - 2) / 2 : h.length / 2);
@@ -386,6 +412,10 @@ export type RevertEvidence = {
   receiptStatus: string;
   withdrawnBefore: string | null;
   withdrawnAfter: string | null;
+  fakeBatchId: number | null;
+  replayedBatchId: number | null;
+  batchCountBefore: number | null;
+  batchCountAfter: number | null;
 };
 
 export type Evidence = {
