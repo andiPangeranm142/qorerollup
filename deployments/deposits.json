@@ -82,7 +82,7 @@
       "creditedAt": "2026-11-18T07:50:01.581Z"
     }
   ],
-  "lastProcessedBlock": 10406829,
+  "lastProcessedBlock": 10408094,
   "network": "qorechain-diana",
   "note": "Deposit watcher state (scripts/deposit-watcher.ts). Deposits are identified by (transaction hash, log index); a deposit already recorded here is never credited again, however often the watcher re-scans. Statuses: pending (seen on-chain, awaiting the next settle), settled (credited by a batch), genesis (credited by hand before the watcher existed), skipped (seen but not creditable — e.g. a non-whole-uqor amount; funds stay in the contract)."
 }
