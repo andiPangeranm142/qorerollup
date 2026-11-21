@@ -7568,6 +7568,1161 @@
         }
       ],
       "allOk": true
+    },
+    {
+      "at": "2026-11-20T17:08:09.918Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T17:20:39.333Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T17:38:05.913Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T18:07:56.184Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T18:38:09.718Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T19:08:06.929Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T19:38:07.645Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T20:08:11.484Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T20:38:03.749Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T21:08:09.282Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T21:38:08.893Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T22:07:57.532Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T22:38:06.026Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T23:08:13.806Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T23:20:27.288Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-20T23:38:07.289Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-21T00:08:18.784Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-21T00:37:59.690Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-21T01:08:07.401Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-21T01:38:09.487Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
+    },
+    {
+      "at": "2026-11-21T02:08:01.888Z",
+      "contract": "0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
+      "chainId": 9800,
+      "batchCount": 8,
+      "decryptCheck": "enabled",
+      "depositChecks": {
+        "checked": true,
+        "ok": true,
+        "failures": []
+      },
+      "results": [
+        {
+          "batchId": 0,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 1,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 2,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 3,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 4,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 5,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 6,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 7,
+          "ok": true,
+          "failures": []
+        }
+      ],
+      "allOk": true
     }
   ]
 }
