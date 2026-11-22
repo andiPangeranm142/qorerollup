@@ -733,7 +733,7 @@ export const EVIDENCE: Evidence = {
   },
   "watchtower": {
     "latest": {
-      "at": "2026-11-18T08:15:57.722Z",
+      "at": "2026-11-22T17:20:43.960Z",
       "allOk": true,
       "batchCount": 8,
       "decryptCheck": "enabled",

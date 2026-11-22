@@ -398,6 +398,24 @@ export function App() {
 
   const latest = EVIDENCE.watchtower.latest;
   const okCount = latest.results.filter((r) => r.ok).length;
+  // The status box shows the LIVE run whenever the status fetch succeeds
+  // and falls back to the bundled evidence run only when it fails — the
+  // box used to always render the bundled run, so it stayed frozen at the
+  // build-time run (18 Nov) even while the live line above it was fresh.
+  const wtDisplay =
+    wtStatus === "live" && wtLive
+      ? {
+          at: wtLive.lastRun,
+          allOk: wtLive.status === "ok",
+          verified: wtLive.batchesVerified,
+          total: wtLive.totalBatches,
+        }
+      : {
+          at: latest.at,
+          allOk: latest.allOk,
+          verified: okCount,
+          total: latest.results.length,
+        };
   const tamper = EVIDENCE.watchtower.tamperDemo;
   // Independent checks the tampered batch failed (8 in the v2 tamper demo:
   // file-vs-chain root, replayed root, leaves-recomputed root, all four
@@ -1000,14 +1018,14 @@ export function App() {
             </>
           )}
         </p>
-        <div className={`watchtower-status ${latest.allOk ? "ok" : "bad"}`}>
+        <div className={`watchtower-status ${wtDisplay.allOk ? "ok" : "bad"}`}>
           <strong>
-            {latest.allOk
-              ? `ALL BATCHES OK — ${okCount}/${latest.results.length} batches verified`
-              : `VERIFICATION FAILED — ${okCount}/${latest.results.length} batches OK`}
+            {wtDisplay.allOk
+              ? `ALL BATCHES OK — ${wtDisplay.verified}/${wtDisplay.total} batches verified`
+              : `VERIFICATION FAILED — ${wtDisplay.verified}/${wtDisplay.total} batches OK`}
           </strong>
           <span>
-            Latest run {formatTime(latest.at)} · decrypt check {latest.decryptCheck}
+            Latest run {formatTime(wtDisplay.at)} · decrypt check {latest.decryptCheck}
           </span>
           {latestBatchResult && (
             <span>
