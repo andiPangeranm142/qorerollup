@@ -20,9 +20,19 @@ owns the result.
 - The settlement contract (`contracts/QoreRollup.sol`), its tests, and the
   deploy script (`scripts/deploy.ts`) — built by a second AI agent working
   in the same repo against the same fixed interface.
-- The Hardhat test suites (`test/sequencer.test.ts`,
-  `test/watchtower.test.ts`, `test/kem.test.ts`, plus the contract tests).
+- The Hardhat test suites (`test/QoreRollup.test.ts`,
+  `test/sequencer.test.ts`, `test/watchtower.test.ts`, `test/kem.test.ts`,
+  `test/merkle.test.ts`, `test/deposit-watcher.test.ts`,
+  `test/deposit-credit.test.ts` — 150 tests total, all passing).
 - The threat model (`THREAT_MODEL.md`) and this note.
+- Post-launch operations tooling (17–24 Nov 2026): the auto-settle
+  script (`scripts/auto-settle.ts`, runs on a schedule and settles
+  batches with pending deposits), the watchtower status reporter
+  (`scripts/watchtower-status.ts`), the revert demonstrations
+  (`scripts/revert-demos.ts` — 6 on-chain revert demonstrations, all
+  receipts recorded), the forged-batch negative test
+  (`scripts/forged-batch.ts`), and the Merkle withdrawal tooling
+  (`scripts/merkle-withdraw.ts`, `scripts/verify-merkle-proof.ts`).
 - The v2 Merkle redesign (17 Nov 2026): the state root became a Merkle
   root over (account, balance, nonce) leaves (`src/lib/merkle.ts`),
   withdrawals became Merkle-proof withdrawals with a cumulative
@@ -80,6 +90,15 @@ repo was fabricated:
   The test followed OUTSIDER_TEST.md end to end but was run by the
   builder — it is a fresh-account test, not an independent outsider
   test.
+- Since then the rollup has grown to 8 settled batches (batch-0 …
+  batch-7), 6 deposits totalling 0.60 QOR, and 6 Merkle-proof
+  withdrawals totalling 0.55 QOR — all recorded in
+  `deployments/usage.json` (8 `settle` steps, 6 `deposit` steps, 6
+  `merkle-withdraw` steps) and in the per-batch files under
+  `deployments/batches/`. The watchtower re-verifies all 8 batches on a
+  schedule (8/8 OK — see `deployments/watchtower-status.json`), and the
+  deposit watcher has run 400+ ingestion cycles (416 `deposit-watcher`
+  steps in `deployments/usage.json`).
 
 Anyone can re-verify the evidence: the batch files contain everything
 needed to recompute the commitments, replay the state transitions, and
