@@ -97,8 +97,9 @@ repo was fabricated:
   `merkle-withdraw` steps) and in the per-batch files under
   `deployments/batches/`. The watchtower re-verifies all 8 batches on a
   schedule (8/8 OK — see `deployments/watchtower-status.json`), and the
-  deposit watcher has run 400+ ingestion cycles (416 `deposit-watcher`
-  steps in `deployments/usage.json`).
+  deposit watcher has run 400+ ingestion cycles, each recorded as a
+  `deposit-watcher` step in `deployments/usage.json` (count them there
+  for the live total — the count grows with every run).
 
 Anyone can re-verify the evidence: the batch files contain everything
 needed to recompute the commitments, replay the state transitions, and
