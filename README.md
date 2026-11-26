@@ -16,10 +16,11 @@ credit check.
 
 - Project page: https://build.qorechain.io/p/qorerollup
 - Demo site: https://andipangeranm142.github.io/qorerollup/
-- Demo video: [docs/demo.mp4](docs/demo.mp4) (2:58, narrated in English — 8 batches,
-  six full cycles including four fresh-account cycles, Merkle-proof
+- Demo video: [docs/demo.mp4](docs/demo.mp4) (2:58, narrated in English — 8 batches at recording, 9 settled now; six full cycles including four fresh-account cycles, Merkle-proof
   withdrawal, six reverted attacks, watchtower, auto-settle). Also on YouTube:
   https://www.youtube.com/watch?v=kd2eNNlbx64
+
+Built on the QoreChain SDK (`@qorechain/sdk` v0.14): unified accounts, ML-DSA-87 batch signing (`pqcSign`), PQC key-status checks, and recovery codes all go through the SDK — the sequencer, watchtower, and window tooling all import it.
 
 ## Team
 
@@ -242,7 +243,9 @@ its supporting L1 deposit fails the run. The watcher runs on its own
 every 30 minutes (a scheduled job, since 17 Nov 2026) — deposits are
 picked up without any operator action; every run is recorded in
 `deployments/usage.json`, and the run log is committed to the repo
-daily.
+daily. The auto-settle job runs on the same pattern every 6 hours —
+see [docs/AUTO_SETTLE.md](docs/AUTO_SETTLE.md) for the schedule and the
+recorded runs.
 
 ## How to verify yourself
 

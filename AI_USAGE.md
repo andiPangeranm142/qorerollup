@@ -26,8 +26,9 @@ owns the result.
   `test/deposit-credit.test.ts` — 150 tests total, all passing).
 - The threat model (`THREAT_MODEL.md`) and this note.
 - Post-launch operations tooling (17–24 Nov 2026): the auto-settle
-  script (`scripts/auto-settle.ts`, runs on a schedule and settles
-  batches with pending deposits), the watchtower status reporter
+  script (`scripts/auto-settle.ts`, runs every 6 hours on a schedule and
+  settles batches with pending deposits — schedule and run log in
+  `docs/AUTO_SETTLE.md`),, the watchtower status reporter
   (`scripts/watchtower-status.ts`), the revert demonstrations
   (`scripts/revert-demos.ts` — 6 on-chain revert demonstrations, all
   receipts recorded), the forged-batch negative test
