@@ -7711,6 +7711,48 @@
       "receiptStatus": "success",
       "enqueuedTinyTx": false,
       "windowOpened": false
+    },
+    {
+      "at": "2026-11-26T13:07:33.526Z",
+      "command": "deposit-watcher",
+      "fromBlock": 10789333,
+      "toBlock": 10789944,
+      "eventsFound": 0,
+      "newDeposits": [],
+      "alreadyKnown": 0,
+      "skipped": [],
+      "pendingCount": 0,
+      "pendingUqor": "0",
+      "creditedUqor": "650000",
+      "totalDepositedUqor": "650000"
+    },
+    {
+      "at": "2026-11-26T13:37:33.234Z",
+      "command": "deposit-watcher",
+      "fromBlock": 10789945,
+      "toBlock": 10791203,
+      "eventsFound": 0,
+      "newDeposits": [],
+      "alreadyKnown": 0,
+      "skipped": [],
+      "pendingCount": 0,
+      "pendingUqor": "0",
+      "creditedUqor": "650000",
+      "totalDepositedUqor": "650000"
+    },
+    {
+      "at": "2026-11-26T14:07:35.517Z",
+      "command": "deposit-watcher",
+      "fromBlock": 10791204,
+      "toBlock": 10792469,
+      "eventsFound": 0,
+      "newDeposits": [],
+      "alreadyKnown": 0,
+      "skipped": [],
+      "pendingCount": 0,
+      "pendingUqor": "0",
+      "creditedUqor": "650000",
+      "totalDepositedUqor": "650000"
     }
   ]
 }

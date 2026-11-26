@@ -80,9 +80,22 @@
       "recordedAt": "2026-11-18T07:49:44.622Z",
       "cosmosTx": "D027975EBEAE44035214CAD3DF1C0E9A29FF49F649EC96ED91A23A55FFCD0E63",
       "creditedAt": "2026-11-18T07:50:01.581Z"
+    },
+    {
+      "depositor": "0xD83610d6901d7C1aFC1fD749665D01EeF9bedb30",
+      "amountUqor": "50000",
+      "amountWei": "50000000000000000",
+      "tx": "0x242fe55477222c732e7aa36c45fb3492165ef0dd66484a9eda35a3fca74977ad",
+      "block": 10789217,
+      "logIndex": 0,
+      "status": "settled",
+      "creditedInBatch": 8,
+      "recordedAt": "2026-11-26T12:50:24.661Z",
+      "cosmosTx": "BB44EDE690AD8DBBD55C4C43019A349E4990706CFA95234ABDBCB22920DE05CB",
+      "creditedAt": "2026-11-26T12:55:18.846Z"
     }
   ],
-  "lastProcessedBlock": 10787421,
+  "lastProcessedBlock": 10792469,
   "network": "qorechain-diana",
   "note": "Deposit watcher state (scripts/deposit-watcher.ts). Deposits are identified by (transaction hash, log index); a deposit already recorded here is never credited again, however often the watcher re-scans. Statuses: pending (seen on-chain, awaiting the next settle), settled (credited by a batch), genesis (credited by hand before the watcher existed), skipped (seen but not creditable — e.g. a non-whole-uqor amount; funds stay in the contract)."
 }
