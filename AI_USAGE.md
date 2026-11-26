@@ -90,13 +90,13 @@ repo was fabricated:
   The test followed OUTSIDER_TEST.md end to end but was run by the
   builder — it is a fresh-account test, not an independent outsider
   test.
-- Since then the rollup has grown to 8 settled batches (batch-0 …
-  batch-7), 6 deposits totalling 0.60 QOR, and 6 Merkle-proof
+- Since then the rollup has grown to 9 settled batches (batch-0 …
+  batch-8), 7 deposits totalling 0.65 QOR, and 6 Merkle-proof
   withdrawals totalling 0.55 QOR — all recorded in
-  `deployments/usage.json` (8 `settle` steps, 6 `deposit` steps, 6
+  `deployments/usage.json` (9 `settle` steps, 7 `deposit` steps, 6
   `merkle-withdraw` steps) and in the per-batch files under
-  `deployments/batches/`. The watchtower re-verifies all 8 batches on a
-  schedule (8/8 OK — see `deployments/watchtower-status.json`), and the
+  `deployments/batches/`. The watchtower re-verifies all 9 batches on a
+  schedule (9/9 OK — see `deployments/watchtower-status.json`), and the
   deposit watcher has run 400+ ingestion cycles, each recorded as a
   `deposit-watcher` step in `deployments/usage.json` (count them there
   for the live total — the count grows with every run).

@@ -4,7 +4,7 @@ A minimal post-quantum rollup on QoreChain — a Protocol Builders entry
 for the QoreChain Developer Fest ("Build Before Q-Day").
 
 **Status:** live on the Diana testnet (v2). Settlement contract
-deployed, 8 batches settled with ML-DSA-87 signatures verified
+deployed, 9 batches settled with ML-DSA-87 signatures verified
 on-chain, L1 deposits flow into rollup balances automatically via the
 deposit watcher (no hand-seeding), a Merkle-proof withdrawal of
 0.3 QOR closed the auto-deposit cycle, four fresh-account
@@ -90,7 +90,7 @@ settles them on the QoreChain Diana testnet with post-quantum security:
   (`keccak256("QoreRollup.receipt", chainid, contract, batchId,
   stateRoot, txDataCommitment)`), emitted in `BatchSettled` and
   re-verified by the watchtower.
-- [x] Watchtower — `npm run watchtower` verifies all 8 batches OK
+- [x] Watchtower — `npm run watchtower` verifies all 9 batches OK
   (signature, state replay, Merkle tree + proofs, receipt, decrypt
   check, genesis-funding cross-check, deposit credit check — every
   credited deposit matched against the on-chain `Deposited` logs,
@@ -196,19 +196,21 @@ explorer links use it). The same hashes are recorded in
 [deployments/usage.json](deployments/usage.json) and
 [deployments/testnet.json](deployments/testnet.json).
 
-Final on-chain state (verified by independent read): `batchCount` 8,
-`totalDeposited` 0.60 QOR, `totalWithdrawn` 0.55 QOR,
+Final on-chain state (verified by independent read): `batchCount` 9,
+`totalDeposited` 0.65 QOR, `totalWithdrawn` 0.55 QOR,
 `withdrawnAmount[deployer]` 300,000 uqor, `withdrawnAmount[user]`
 50,000 uqor, `withdrawnAmount[each fresh test account]` 50,000 uqor
 (four fresh accounts: the 17 Nov one and the three 18 Nov ones),
 `deposits[deployer]` 0.4 QOR, `deposits[each fresh test account]`
-0.05 QOR (v2 withdrawals do not touch the L1 deposit ledger),
-contract balance 0.05 QOR. Final rollup balances: deployer 300,000
+0.05 QOR — except `0xD836…bedb30`, now 0.10 QOR after its second 0.05 QOR
+deposit in batch #8 (26 Nov) — (v2 withdrawals do not touch the L1 deposit
+ledger), contract balance 0.10 QOR. Final rollup balances: deployer 300,000
 uqor, user wallet 60,000, `0x1111…1111` 15,000,
 `0x2222…2222` 10,000, `0x3333…3333` 15,000, each fresh test account
-50,000 (total 600,000 — conserved from the 0.60 QOR deposited).
+50,000 — except `0xD836…bedb30` at 100,000 after its second deposit in
+batch #8 — (total 650,000 — conserved from the 0.65 QOR deposited).
 Solvency: the remaining withdrawable amounts (leaf balance minus
-`withdrawnAmount` per account) total exactly 50,000 uqor — the
+`withdrawnAmount` per account) total exactly 100,000 uqor — the
 contract's balance.
 
 L1 deposits are auto-credited: the deposit watcher
@@ -259,8 +261,8 @@ can be checked independently:
    10303817, 10303828 and 10303835.
 2. **Check the contract state.** Open the settlement contract
    `0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708` on the explorer
-   (Testnet): `batchCount` 8, `totalDeposited` 0.60 QOR,
-   `totalWithdrawn` 0.55 QOR, contract balance 0.05 QOR.
+   (Testnet): `batchCount` 9, `totalDeposited` 0.65 QOR,
+   `totalWithdrawn` 0.55 QOR, contract balance 0.10 QOR.
 3. **Re-run the tests.** `npm install && npm test` — 150 tests pass
    (Hardhat; the contract tests run against mock precompiles, the
    off-chain tests use real ML-DSA-87 and ML-KEM-1024 crypto).
