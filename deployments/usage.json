@@ -8980,6 +8980,62 @@
       "pendingUqor": "0",
       "creditedUqor": "650000",
       "totalDepositedUqor": "650000"
+    },
+    {
+      "at": "2026-11-28T05:20:00.877Z",
+      "command": "deposit-watcher",
+      "fromBlock": 10891084,
+      "toBlock": 10891547,
+      "eventsFound": 0,
+      "newDeposits": [],
+      "alreadyKnown": 0,
+      "skipped": [],
+      "pendingCount": 0,
+      "pendingUqor": "0",
+      "creditedUqor": "650000",
+      "totalDepositedUqor": "650000"
+    },
+    {
+      "at": "2026-11-28T05:37:33.128Z",
+      "command": "deposit-watcher",
+      "fromBlock": 10891548,
+      "toBlock": 10892285,
+      "eventsFound": 0,
+      "newDeposits": [],
+      "alreadyKnown": 0,
+      "skipped": [],
+      "pendingCount": 0,
+      "pendingUqor": "0",
+      "creditedUqor": "650000",
+      "totalDepositedUqor": "650000"
+    },
+    {
+      "at": "2026-11-28T06:07:33.543Z",
+      "command": "deposit-watcher",
+      "fromBlock": 10892286,
+      "toBlock": 10893546,
+      "eventsFound": 0,
+      "newDeposits": [],
+      "alreadyKnown": 0,
+      "skipped": [],
+      "pendingCount": 0,
+      "pendingUqor": "0",
+      "creditedUqor": "650000",
+      "totalDepositedUqor": "650000"
+    },
+    {
+      "at": "2026-11-28T06:37:32.623Z",
+      "command": "deposit-watcher",
+      "fromBlock": 10893547,
+      "toBlock": 10894806,
+      "eventsFound": 0,
+      "newDeposits": [],
+      "alreadyKnown": 0,
+      "skipped": [],
+      "pendingCount": 0,
+      "pendingUqor": "0",
+      "creditedUqor": "650000",
+      "totalDepositedUqor": "650000"
     }
   ]
 }
