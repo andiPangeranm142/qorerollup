@@ -168,11 +168,11 @@ export const EVIDENCE: Evidence = {
   "explorerContract": "https://explore.qore.network/address/0xb54a8bd2dfffa9f3b8a23c3b4e663fe31667d708",
   "explorerDeployTx": "https://explore.qore.network/tx/5DFEEF53AEFBD5F23FA3DA9DC6F47D7168B5A91DEB75843211CA4470E4713510",
   "totals": {
-    "batchCount": 8,
-    "totalDepositedUqor": "600000",
+    "batchCount": 9,
+    "totalDepositedUqor": "650000",
     "totalWithdrawnUqor": "550000",
     "deployerDepositUqor": "400000",
-    "finalStateRoot": "0xf564f2855aa9fa1e4bcce04d306dbdac80b9cb456292df4fd10d23f6948cb927"
+    "finalStateRoot": "0xdebbf9237c77c6986bac3590dd5f72bb6ed06d69b83e4a1c93f65726aeadb856"
   },
   "balances": {
     "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
@@ -181,7 +181,7 @@ export const EVIDENCE: Evidence = {
     "0x2222222222222222222222222222222222222222": "10000",
     "0x3333333333333333333333333333333333333333": "15000",
     "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000",
-    "0xd83610d6901d7c1afc1fd749665d01eef9bedb30": "50000",
+    "0xd83610d6901d7c1afc1fd749665d01eef9bedb30": "100000",
     "0x8b58b1bc07587ab88734f18ded398682cb8228d6": "50000",
     "0xaf9ed7049d664b805bcd866a44ba3cc2725f1ded": "50000"
   },
@@ -501,6 +501,51 @@ export const EVIDENCE: Evidence = {
         "0x8b58b1bc07587ab88734f18ded398682cb8228d6": "50000",
         "0xaf9ed7049d664b805bcd866a44ba3cc2725f1ded": "50000"
       }
+    },
+    {
+      "batchId": 8,
+      "txCount": 1,
+      "stateRoot": "0xdebbf9237c77c6986bac3590dd5f72bb6ed06d69b83e4a1c93f65726aeadb856",
+      "prevStateRoot": "0xf564f2855aa9fa1e4bcce04d306dbdac80b9cb456292df4fd10d23f6948cb927",
+      "txDataCommitment": "0x1100d6ce83b2c842fa2a973982fc394c26bd9420b89cd7cc91852cf6216a4e1c",
+      "encryptedDataHash": "0xd8ffc4479369cfe2201d01590491cc723409ad34e0b7174653ec4cef520b8cf1",
+      "digest": "0xf186960ce2a5394e5feef28f50fc14a7200e02433138f380c2e115049e784c39",
+      "receiptHash": "0xb8e4479ae8dc368c5016e42e50a33e151a2c53a8b5f4fb4e0a3a362651c7fd02",
+      "submitTx": "0x5564b5cbd9db9d0640c5c0e3eac20910bdfab9ed28e57597620d66590499ce96",
+      "cosmosTx": "1FC71F138E2489B58BF582230F35428D66EC05D6E6970AE82DB3EFE015A5D005",
+      "block": 10789431,
+      "settledAt": "2026-11-26T12:55:18.840Z",
+      "signatureBytes": 4627,
+      "kemCiphertextBytes": 1568,
+      "sealedBlobBytes": 345,
+      "txs": [
+        {
+          "from": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "to": "0x0140a056ee37D5240b0397eCdF1347Da80E33b9f",
+          "amountUqor": "1",
+          "nonce": 8
+        }
+      ],
+      "deposits": [
+        {
+          "depositor": "0xD83610d6901d7C1aFC1fD749665D01EeF9bedb30",
+          "amountUqor": "50000",
+          "tx": "0x242fe55477222c732e7aa36c45fb3492165ef0dd66484a9eda35a3fca74977ad",
+          "cosmosTx": "BB44EDE690AD8DBBD55C4C43019A349E4990706CFA95234ABDBCB22920DE05CB",
+          "block": 10789217
+        }
+      ],
+      "balancesAfter": {
+        "0x0140a056ee37d5240b0397ecdf1347da80e33b9f": "300000",
+        "0x29cb5abd4309b5a83a6a66e95cbda1d88f060d4f": "60000",
+        "0x1111111111111111111111111111111111111111": "15000",
+        "0x2222222222222222222222222222222222222222": "10000",
+        "0x3333333333333333333333333333333333333333": "15000",
+        "0x2837cac00ec6bf9d6334ba717e4d8b1f50c5837f": "50000",
+        "0xd83610d6901d7c1afc1fd749665d01eef9bedb30": "100000",
+        "0x8b58b1bc07587ab88734f18ded398682cb8228d6": "50000",
+        "0xaf9ed7049d664b805bcd866a44ba3cc2725f1ded": "50000"
+      }
     }
   ],
   "cycle": {
@@ -559,6 +604,13 @@ export const EVIDENCE: Evidence = {
         "tx": "0x2472759ca39e789555f839b34431859dce0c583d945d317254b18141ac799dc6",
         "cosmosTx": "D027975EBEAE44035214CAD3DF1C0E9A29FF49F649EC96ED91A23A55FFCD0E63",
         "block": 10303747
+      },
+      {
+        "at": "2026-11-26T12:50:12.000Z",
+        "amountUqor": "50000",
+        "tx": "0x242fe55477222c732e7aa36c45fb3492165ef0dd66484a9eda35a3fca74977ad",
+        "cosmosTx": "BB44EDE690AD8DBBD55C4C43019A349E4990706CFA95234ABDBCB22920DE05CB",
+        "block": 10789217
       }
     ],
     "withdraw": {
@@ -733,9 +785,9 @@ export const EVIDENCE: Evidence = {
   },
   "watchtower": {
     "latest": {
-      "at": "2026-11-22T17:20:43.960Z",
+      "at": "2026-11-28T01:09:00.823Z",
       "allOk": true,
-      "batchCount": 8,
+      "batchCount": 9,
       "decryptCheck": "enabled",
       "results": [
         {
@@ -775,6 +827,11 @@ export const EVIDENCE: Evidence = {
         },
         {
           "batchId": 7,
+          "ok": true,
+          "failures": []
+        },
+        {
+          "batchId": 8,
           "ok": true,
           "failures": []
         }

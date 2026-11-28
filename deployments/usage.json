@@ -7636,6 +7636,15 @@
       "totalDepositedUqor": "600000"
     },
     {
+      "at": "2026-11-26T12:50:12.000Z",
+      "command": "deposit",
+      "account": "0xD83610d6901d7C1aFC1fD749665D01EeF9bedb30",
+      "amountUqor": "50000",
+      "tx": "0x242fe55477222c732e7aa36c45fb3492165ef0dd66484a9eda35a3fca74977ad",
+      "cosmosTx": "BB44EDE690AD8DBBD55C4C43019A349E4990706CFA95234ABDBCB22920DE05CB",
+      "block": 10789217
+    },
+    {
       "at": "2026-11-26T12:50:25.630Z",
       "command": "deposit-watcher",
       "fromBlock": 10788685,

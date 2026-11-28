@@ -120,15 +120,15 @@ const checks = {
   "no v1 contract": !text.includes("0x96051b69"),
   "no nullifier text": !text.toLowerCase().includes("nullifier"),
   // Live values, read from the chain at render time — update these when a
-  // new batch lands (batches 5–7 settled 18 Nov 2026: 8 / 0.6 / 0.55).
-  // The batch CARDS below come from the evidence file (8 batches merged).
-  "batchCount 8": batchCountValue === "8",
-  "last batch id 7": lastBatchValue === "7",
-  "8 batch cards": batchCards === 8,
-  "total deposited 0.6 QOR": depositedValue === "0.6 QOR",
+  // new batch lands (batch #8 settled 26 Nov 2026: 9 / 0.65 / 0.55).
+  // The batch CARDS below come from the evidence file (9 batches merged).
+  "batchCount 9": batchCountValue === "9",
+  "last batch id 8": lastBatchValue === "8",
+  "9 batch cards": batchCards === 9,
+  "total deposited 0.65 QOR": depositedValue === "0.65 QOR",
   "total withdrawn 0.55 QOR": withdrawnValue === "0.55 QOR",
   "deployer deposit 0.4 QOR": deployerDepositValue === "0.4 QOR",
-  "contract balance 0.05 QOR": contractBalanceValue === "0.05 QOR",
+  "contract balance 0.1 QOR": contractBalanceValue === "0.1 QOR",
   "150 Hardhat tests": text.includes("150 Hardhat tests"),
   "no stale 100 tests": !text.includes("100 tests"),
   "explorer mainnet note": text.includes("defaults to Mainnet") && text.includes("switch to Testnet"),
@@ -151,9 +151,9 @@ const checks = {
   "watchtower live-status line (live file or embedded fallback)":
     text.includes("Live status — last run") ||
     text.includes("Live watchtower status unavailable"),
-  "watchtower latest batch #7 OK": text.includes("Latest batch #7: ✓ OK"),
+  "watchtower latest batch #8 OK": text.includes("Latest batch #8: ✓ OK"),
   "watchtower ALL BATCHES OK": text.includes("ALL BATCHES OK"),
-  "watchtower 8/8": text.includes("8/8 batches verified"),
+  "watchtower 9/9": text.includes("9/9 batches verified"),
   "tamper-catch demo": text.includes("Tamper-catch demo"),
   "tamper failed on 8 checks": text.includes("8 independent checks"),
   "merkle-proof withdrawal section": text.includes("Merkle-proof withdrawal"),
@@ -177,8 +177,8 @@ const checks = {
     text.includes("Genesis funding") && !text.includes("not auto-credited"),
   "first-cycle user withdrawal still shown":
     text.includes("Merkle-proof withdrawal — 0.05 QOR"),
-  "balances total conserved from 0.6 QOR":
-    text.includes("conserved from the 0.6 QOR deposited"),
+  "balances total conserved from 0.65 QOR":
+    text.includes("conserved from the 0.65 QOR deposited"),
   "double-withdraw revert": text.includes("ZeroWithdraw"),
   "tampered-proof revert": text.includes("InvalidMerkleProof"),
   "forged batch reverted": text.includes("REVERTED on-chain"),
